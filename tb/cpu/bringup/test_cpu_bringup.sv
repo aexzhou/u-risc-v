@@ -8,7 +8,7 @@ module test_cpu_bringup;
     // Instantiate the DUT (Device Under Test)
     rv_cpu u_cpu (
         .clk(clk),
-        .rst(rst)
+        .rst_n(~rst)
     );
 
     // Clock generation - 10ns period (100MHz)
@@ -45,12 +45,12 @@ module test_cpu_bringup;
 
         // Display some register values
         $display("Final Register Values:");
-        $display("  X1 = 0x%h", dut.REGFILE.X[1]);
-        $display("  X2 = 0x%h", dut.REGFILE.X[2]);
-        $display("  X3 = 0x%h", dut.REGFILE.X[3]);
-        $display("  X4 = 0x%h", dut.REGFILE.X[4]);
-        $display("  X5 = 0x%h", dut.REGFILE.X[5]);
-        $display("  X6 = 0x%h", dut.REGFILE.X[6]);
+        $display("  X1 = 0x%h", u_cpu.u_datapath.u_regfile.X[1]);
+        $display("  X2 = 0x%h", u_cpu.u_datapath.u_regfile.X[2]);
+        $display("  X3 = 0x%h", u_cpu.u_datapath.u_regfile.X[3]);
+        $display("  X4 = 0x%h", u_cpu.u_datapath.u_regfile.X[4]);
+        $display("  X5 = 0x%h", u_cpu.u_datapath.u_regfile.X[5]);
+        $display("  X6 = 0x%h", u_cpu.u_datapath.u_regfile.X[6]);
         $display("");
         $display("Waveform saved to waveform.vcd");
         $display("View with: gtkwave waveform.vcd");
@@ -67,9 +67,9 @@ module test_cpu_bringup;
 
     // Optional: Monitor instructions being executed
     always @(posedge clk) begin
-        if (!rst && dut.PC_Write) begin
+        if (!rst && u_cpu.u_datapath.pc_write) begin
             $display("Time %0t: PC=0x%h, Instruction=0x%h",
-                     $time, dut.PC_out, dut.iMem_out);
+                     $time, u_cpu.u_datapath.pc_out, u_cpu.u_datapath.imem_out);
         end
     end
 
