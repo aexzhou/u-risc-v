@@ -1,0 +1,3 @@
+NUM_CORES = 1;
+CPU_DW = 64;
+CPU_AW = 64;
