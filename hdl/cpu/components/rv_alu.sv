@@ -1,4 +1,4 @@
-// ALUop inputs
+// alu_op inputs
 // 4'b0000: AND
 // 4'b0001: OR
 // 4'b0010: ADD
@@ -13,13 +13,13 @@ module rv_alu #(
 ) (
     input  logic [DW-1:0] in1,
     input  logic [DW-1:0] in2,
-    input  logic [3:0]    ALUop,
+    input  logic [3:0]    alu_op,
     output logic [DW-1:0] out,
     output logic          zflag
 );
 
 always_comb begin
-    case (ALUop)
+    case (alu_op)
         4'b0000: out = in1 & in2;
         4'b0001: out = in1 | in2;
         4'b0010: out = in1 + in2;
