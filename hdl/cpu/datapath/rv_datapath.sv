@@ -26,7 +26,7 @@ logic [DW-1:0] idex_imm, idex_a, idex_b;
 logic [4:0]    idex_rs1, idex_rs2, idex_rd;
 logic          idex_regwrite, idex_memtoreg, idex_branch;
 logic          idex_memread, idex_memwrite, idex_alusrc;
-logic [1:0]    idex_aluop;
+logic [1:0]    idex_alu_op;
 logic [3:0]    idex_alucontrol;
 
 // EX|MEM Pipeline Registers
@@ -65,7 +65,6 @@ dffr #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
 logic [31:0] imem_out;
 mem #(.DEPTH(IMEM_DEPTH), .DW(32)) u_imem (
     .clk        (clk),
-    .rst        (~rst_n),
     .address    (pc_out),
     .write_data (32'b0),
     .mem_read   (1'b1),
@@ -98,7 +97,7 @@ logic          equal_flag;
 logic [DW-1:0] regout1, regout2;
 
 // Control outputs
-logic [1:0]    aluop;
+logic [1:0]    alu_op;
 logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
 
 // Branch target: immediate left-shifted by 1 + ifid_pc
@@ -110,10 +109,10 @@ rv_immgen #(.DW(DW)) u_immgen (
     .imm_out (imm)
 );
 
-rv_datapath_ctrl #(.AW(32)) u_datapath_ctrl (
-    .i          (ifid_i),
+rv_datapath_ctrl u_datapath_ctrl (
+    .opcode     (ifid_i[6:0]),
     .equal_flag (equal_flag),
-    .aluop      (aluop),
+    .alu_op      (alu_op),
     .branch     (branch),
     .memread    (memread),
     .memtoreg   (memtoreg),
@@ -128,7 +127,8 @@ logic [DW-1:0] write_data;
 assign write_data = mwb_memtoreg ? mwb_dout : mwb_aluout;
 
 rv_regfile u_regfile (
-    .i          (ifid_i),
+    .rs1        (ifid_i[19:15]),
+    .rs2        (ifid_i[24:20]),
     .writeR     (mwb_rd),
     .write_data (write_data),
     .write      (mwb_regwrite),
@@ -139,7 +139,8 @@ rv_regfile u_regfile (
 );
 
 rv_hdu u_hdu (
-    .ifid_i     (ifid_i),
+    .ifid_rs1   (ifid_i[19:15]),
+    .ifid_rs2   (ifid_i[24:20]),
     .idex_rd    (idex_rd),
     .mem_read   (idex_memread),
     .pc_write   (pc_write),
@@ -161,7 +162,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         idex_alucontrol <= '0;
         idex_imm        <= '0;
         {idex_regwrite, idex_memtoreg, idex_branch,
-         idex_memread,  idex_memwrite, idex_alusrc, idex_aluop} <= '0;
+         idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
     end else begin
         idex_rs1        <= ifid_i[19:15];
         idex_rs2        <= ifid_i[24:20];
@@ -174,11 +175,11 @@ always_ff @(posedge clk or negedge rst_n) begin
         // Insert bubble (NOP) on load-use hazard
         if (hazard_flag)
             {idex_regwrite, idex_memtoreg, idex_branch,
-             idex_memread,  idex_memwrite, idex_alusrc, idex_aluop} <= '0;
+             idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
         else
             {idex_regwrite, idex_memtoreg, idex_branch,
-             idex_memread,  idex_memwrite, idex_alusrc, idex_aluop}
-                <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, aluop};
+             idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
+                <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};
     end
 end
 
@@ -216,14 +217,14 @@ assign alu_b = idex_alusrc ? idex_imm : idex_muxb;
 
 rv_alu_ctrl u_alu_ctrl (
     .control (idex_alucontrol),
-    .ALUop   (idex_aluop),
+    .alu_op   (idex_alu_op),
     .opout   (alu_ctrl)
 );
 
 rv_alu #(.DW(DW)) u_alu (
     .in1   (alu_a),
     .in2   (alu_b),
-    .ALUop (alu_ctrl),
+    .alu_op (alu_ctrl),
     .out   (alu_out),
     .zflag (zflag)
 );
@@ -267,7 +268,6 @@ assign pc_src = exm_branch & exm_zflag;
 
 mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (
     .clk        (clk),
-    .rst        (~rst_n),
     .address    (exm_aluout),
     .write_data (exm_muxb),
     .mem_read   (exm_memread),

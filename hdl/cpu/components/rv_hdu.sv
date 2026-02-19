@@ -1,15 +1,13 @@
 // Hazard detection unit
 module rv_hdu(
-    input  logic [31:0] ifid_i,
+    input  logic [4:0]  ifid_rs1,
+    input  logic [4:0]  ifid_rs2,
     input  logic [4:0]  idex_rd,
     input  logic        mem_read,
     output logic        pc_write,
     output logic        ifid_write,
     output logic        hazard_flag
 );
-    logic [4:0] ifid_rs1, ifid_rs2;
-    assign ifid_rs1 = ifid_i[19:15];
-    assign ifid_rs2 = ifid_i[24:20];
     always_comb begin
         if (mem_read && ((idex_rd == ifid_rs1) || (idex_rd == ifid_rs2))) begin
             // Stalling the pipeline
