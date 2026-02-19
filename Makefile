@@ -1,5 +1,6 @@
 REPO_ROOT   := $(shell pwd)
 CPU_DIR     := $(REPO_ROOT)/hdl/cpu
+COMMON_DIR  := $(REPO_ROOT)/hdl/common
 TB_BRINGUP  := $(REPO_ROOT)/tb/cpu/bringup
 
 CPU_F       := $(CPU_DIR)/top/cpu.f
@@ -28,7 +29,7 @@ $(TB_BRINGUP_DIR):
 
 # Expand cpu.f variable references and write to a temp file
 $(CPU_F_EXPANDED): $(CPU_F) | $(TB_BRINGUP_DIR)
-	sed 's|$${CPU_DIR}|$(CPU_DIR)|g' $< > $@
+	sed 's|$${CPU_DIR}|$(CPU_DIR)|g;s|$${COMMON_DIR}|$(COMMON_DIR)|g' $< > $@
 
 cpu: $(CPU_F_EXPANDED)
 	$(VERILATOR) $(VERILATOR_FLAGS) \
