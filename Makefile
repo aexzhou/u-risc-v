@@ -9,7 +9,7 @@ TB_TOP      := $(TB_BRINGUP)/test_cpu_bringup.sv
 RUN_DIR     := $(REPO_ROOT)/rundir
 
 # Per-test output directories
-TB_BRINGUP_NAME := test_cpu_bringup
+TB_BRINGUP_NAME ?= test_cpu_bringup
 TB_BRINGUP_DIR  := $(RUN_DIR)/$(TB_BRINGUP_NAME)
 TB_BRINGUP_WORK := $(TB_BRINGUP_DIR)/work
 
