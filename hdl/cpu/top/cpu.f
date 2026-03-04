@@ -5,6 +5,9 @@ ${COMMON_DIR}/dff.sv
 ${COMMON_DIR}/dffr.sv
 ${COMMON_DIR}/mem.sv
 
+// Types package
+${CHIPLEVEL_DIR}/rv_alu_types.sv
+
 // Components
 ${CPU_DIR}/components/rv_alu_ctrl.sv
 ${CPU_DIR}/components/rv_alu.sv
