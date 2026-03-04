@@ -1,31 +1,31 @@
 // alu_op inputs
-// 4'b0000: AND
-// 4'b0001: OR
-// 4'b0010: ADD
-// 4'b0110: SUB
-// 4'b0111: SLT (Set on Less Than): will output 1 if A < B
-// 4'b1100: NOR
+// ALU_AND (4'b0000): AND
+// ALU_OR  (4'b0001): OR
+// ALU_ADD (4'b0010): ADD
+// ALU_SUB (4'b0110): SUB
+// ALU_SLT (4'b0111): SLT (Set on Less Than): will output 1 if A < B
+// ALU_NOR (4'b1100): NOR
 
-// TODO: Define enums for these ops
-
-module rv_alu #(
+module rv_alu
+    import rv_alu_types::*;
+#(
     parameter int DW = 32
 ) (
     input  logic [DW-1:0] in1,
     input  logic [DW-1:0] in2,
-    input  logic [3:0]    alu_op,
+    input  alu_op_e        alu_op,
     output logic [DW-1:0] out,
     output logic          zflag
 );
 
 always_comb begin
     case (alu_op)
-        4'b0000: out = in1 & in2;
-        4'b0001: out = in1 | in2;
-        4'b0010: out = in1 + in2;
-        4'b0110: out = in1 - in2;
-        4'b0111: out = {{DW-1{1'b0}}, (in1 < in2)};  // SLT
-        4'b1100: out = ~(in1 | in2);                 // NOR
+        ALU_AND: out = in1 & in2;
+        ALU_OR:  out = in1 | in2;
+        ALU_ADD: out = in1 + in2;
+        ALU_SUB: out = in1 - in2;
+        ALU_SLT: out = {{DW-1{1'b0}}, (in1 < in2)};  // SLT
+        ALU_NOR: out = ~(in1 | in2);                 // NOR
         default: out = {DW{1'bx}};
     endcase
 
