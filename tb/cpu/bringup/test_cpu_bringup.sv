@@ -46,7 +46,7 @@ module cpu_bringup_tb_env #(
     end
 
     always @(posedge clk) begin
-        if (!rst && u_cpu.u_datapath.pc_write) begin
+        if (!rst && u_cpu.u_ifu.pc_write) begin
             $display("[%s] Time %0t: PC=0x%h, Instruction=0x%h",
                      TB_NAME, $time, u_cpu.u_ifu.pc_out, u_cpu.u_ifu.imem_out);
         end
