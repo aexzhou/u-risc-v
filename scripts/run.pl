@@ -78,15 +78,16 @@ make_path($work_dir);
 # Expand path variables in the filelist and write to run_dir
 # ---------------------------------------------------------------------------
 my %vars = (
-    CPU_DIR    => "$repo_root/hdl/cpu",
-    COMMON_DIR => "$repo_root/hdl/common",
+    CPU_DIR      => "$repo_root/hdl/cpu",
+    COMMON_DIR   => "$repo_root/hdl/common",
+    CHIPLEVEL_DIR => "$repo_root/hdl/chiplevel",
 );
 
 my $expanded_f = "$run_dir/expanded.f";
 open my $in,  '<', $src_f      or die "Cannot read $src_f: $!\n";
 open my $out, '>', $expanded_f or die "Cannot write $expanded_f: $!\n";
 while (my $line = <$in>) {
-    $line =~ s/\$\{(\w+)\}/$vars{$1} \/\/ die "Unknown variable \$1 in filelist\n"/ge;
+    $line =~ s/\$\{(\w+)\}/exists $vars{$1} ? $vars{$1} : die "Unknown variable \$$1 in filelist\n"/ge;
     print $out $line;
 }
 close $in;

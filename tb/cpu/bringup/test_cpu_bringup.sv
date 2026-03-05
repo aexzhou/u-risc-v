@@ -1,76 +1,195 @@
-// SystemVerilog Testbench for RISC-V Datapath
-module test_cpu_bringup;
+// SystemVerilog bringup tests for RISC-V CPU split by scenario.
 
-    // Clock and reset signals
+/* verilator lint_off DECLFILENAME */
+
+`define U_IMEM_PATH env.u_cpu.u_ifu.u_imem
+`define U_DMEM_PATH env.u_cpu.u_memu.u_dmem
+`define U_REGFILE_PATH env.u_cpu.u_idu.u_regfile
+
+module cpu_bringup_tb_env #(
+    parameter string TB_NAME = "cpu_bringup",
+    parameter string VCD_FILE = "waveform.vcd"
+);
+
     logic clk;
     logic rst;
 
-    // Instantiate the DUT (Device Under Test)
     rv_cpu u_cpu (
         .clk(clk),
         .rst_n(~rst)
     );
 
-    // Clock generation - 10ns period (100MHz)
     initial begin
         clk = 0;
         forever #5 clk = ~clk;
     end
 
-    // Waveform dumping for GTKWave
     initial begin
-        $dumpfile("waveform.vcd");
-        $dumpvars(0, tb_datapath);
+        $dumpfile(VCD_FILE);
+        $dumpvars(0);
     end
 
-    // Test sequence
-    initial begin
-        $display("Starting RISC-V Datapath Simulation");
-        $display("=====================================");
+    task automatic init_imem_with_nops();
+        for (int i = 0; i < 256; i++)
+            u_cpu.u_ifu.u_imem.memory[i] = 32'b00000000000000000000000000010011; // addi x0, x0, 0
+    endtask
 
-        // Initialize signals
+    task automatic apply_reset();
         rst = 1;
-
-        // Hold reset for a few cycles
-        repeat(5) @(posedge clk);
-
-        $display("Time %0t: Releasing reset", $time);
+        repeat (5) @(posedge clk);
         rst = 0;
+    endtask
 
-        // Run simulation for some cycles
-        repeat(50) @(posedge clk);
+    task automatic run_cycles(input int cycles);
+        repeat (cycles) @(posedge clk);
+    endtask
 
-        $display("Time %0t: Simulation completed", $time);
-        $display("=====================================");
-
-        // Display some register values
-        $display("Final Register Values:");
-        $display("  X1 = 0x%h", u_cpu.u_datapath.u_regfile.X[1]);
-        $display("  X2 = 0x%h", u_cpu.u_datapath.u_regfile.X[2]);
-        $display("  X3 = 0x%h", u_cpu.u_datapath.u_regfile.X[3]);
-        $display("  X4 = 0x%h", u_cpu.u_datapath.u_regfile.X[4]);
-        $display("  X5 = 0x%h", u_cpu.u_datapath.u_regfile.X[5]);
-        $display("  X6 = 0x%h", u_cpu.u_datapath.u_regfile.X[6]);
-        $display("");
-        $display("Waveform saved to waveform.vcd");
-        $display("View with: gtkwave waveform.vcd");
-
-        $finish;
-    end
-
-    // Timeout watchdog
     initial begin
-        #10000; // 10us timeout
-        $display("ERROR: Simulation timeout!");
+        #10000;
+        $display("[%s] ERROR: Simulation timeout!", TB_NAME);
         $finish;
     end
 
-    // Optional: Monitor instructions being executed
     always @(posedge clk) begin
-        if (!rst && u_cpu.u_datapath.pc_write) begin
-            $display("Time %0t: PC=0x%h, Instruction=0x%h",
-                     $time, u_cpu.u_datapath.pc_out, u_cpu.u_datapath.imem_out);
+        if (!rst && u_cpu.u_ifu.pc_write) begin
+            $display("[%s] Time %0t: PC=0x%h, Instruction=0x%h",
+                     TB_NAME, $time, u_cpu.u_ifu.pc_out, u_cpu.u_ifu.imem_out);
         end
     end
 
+endmodule
+/* verilator lint_on DECLFILENAME */
+
+module test_cpu_bringup_arithmetic;
+    cpu_bringup_tb_env #(.TB_NAME("arith"), .VCD_FILE("waveform_arith.vcd")) env();
+    bit pass;
+
+    initial begin
+        pass = 1'b1;
+        env.init_imem_with_nops();
+
+        // addi x1, x0, 5
+        `U_IMEM_PATH.memory[0] = 32'b00000000010100000000000010010011;
+        // addi x2, x0, 6
+        `U_IMEM_PATH.memory[1] = 32'b00000000011000000000000100010011;
+        // addi x3, x1, 7
+        `U_IMEM_PATH.memory[2] = 32'b00000000011100001000000110010011;
+        // add x4, x1, x2
+        `U_IMEM_PATH.memory[3] = 32'b00000000001000001000001000110011;
+        // sub x4, x4, x2
+        `U_IMEM_PATH.memory[4] = 32'b01000000001000100000001000110011;
+
+        env.apply_reset();
+        env.run_cycles(20);
+
+        if (`U_REGFILE_PATH.X[1] != 64'h5) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[2] != 64'h6) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[3] != 64'hc) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[4] != 64'h5) pass = 1'b0;
+
+        $display("[arith] X1=0x%0h X2=0x%0h X3=0x%0h X4=0x%0h => %s",
+                 `U_REGFILE_PATH.X[1],
+                 `U_REGFILE_PATH.X[2],
+                 `U_REGFILE_PATH.X[3],
+                 `U_REGFILE_PATH.X[4],
+                 pass ? "PASS" : "FAIL");
+        $finish;
+    end
+endmodule
+
+module test_cpu_bringup_mem_hazard;
+    cpu_bringup_tb_env #(.TB_NAME("mem_hazard"), .VCD_FILE("waveform_mem_hazard.vcd")) env();
+    bit pass;
+
+    initial begin
+        pass = 1'b1;
+        env.init_imem_with_nops();
+
+        // Setup sequence
+        `U_IMEM_PATH.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
+        `U_IMEM_PATH.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
+        `U_IMEM_PATH.memory[2] = 32'b00000000011100001000000110010011; // addi x3, x1, 7
+        // MEM hazard sequence
+        `U_IMEM_PATH.memory[3] = 32'b00000000001000001000000010110011; // add x1, x1, x2
+        `U_IMEM_PATH.memory[4] = 32'b00000000001100001111000010110011; // and x1, x1, x3
+        `U_IMEM_PATH.memory[5] = 32'b00000000010000001110000010110011; // or x1, x1, x4
+
+        env.apply_reset();
+        env.run_cycles(20);
+
+        if (`U_REGFILE_PATH.X[1] != 64'hd) pass = 1'b0;
+        $display("[mem_hazard] X1=0x%0h => %s",
+                 `U_REGFILE_PATH.X[1],
+                 pass ? "PASS" : "FAIL");
+        $finish;
+    end
+endmodule
+
+module test_cpu_bringup_memory;
+    cpu_bringup_tb_env #(.TB_NAME("memory"), .VCD_FILE("waveform_memory.vcd")) env();
+    bit pass;
+
+    initial begin
+        pass = 1'b1;
+        env.init_imem_with_nops();
+
+        `U_IMEM_PATH.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
+        `U_IMEM_PATH.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
+        `U_IMEM_PATH.memory[2] = 32'b00000000001000001000001000110011; // add x4, x1, x2
+        `U_IMEM_PATH.memory[3] = 32'b00000000010000010010000000100011; // sw x4, 0(x2)
+        `U_IMEM_PATH.memory[4] = 32'b00000000000000010101000100000011; // lw x2, 0(x2)
+
+        env.apply_reset();
+        env.run_cycles(20);
+
+        if (`U_DMEM_PATH.memory[0] != `U_REGFILE_PATH.X[4]) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[2] != `U_DMEM_PATH.memory[0]) pass = 1'b0;
+
+        $display("[memory] dmem[0]=0x%0h X2=0x%0h X4=0x%0h => %s",
+                 `U_IMEM_PATH.memory[0],
+                 `U_REGFILE_PATH.X[2],
+                 `U_REGFILE_PATH.X[4],
+                 pass ? "PASS" : "FAIL");
+        $finish;
+    end
+endmodule
+
+module test_cpu_bringup_branch;
+    cpu_bringup_tb_env #(.TB_NAME("branch"), .VCD_FILE("waveform_branch.vcd")) env();
+    bit pass;
+
+    initial begin
+        pass = 1'b1;
+        env.init_imem_with_nops();
+
+        `U_IMEM_PATH.memory[0]  = 32'b00000000010100000000000010010011; // addi x1, x0, 5
+        `U_IMEM_PATH.memory[1]  = 32'b00000000011000000000000100010011; // addi x2, x0, 6
+        `U_IMEM_PATH.memory[2]  = 32'b00000010000100000000111001100011; // beq x0, x1, #60 (not taken)
+        `U_IMEM_PATH.memory[3]  = 32'b00000000001000001000001000110011; // add x4, x1, x2
+        `U_IMEM_PATH.memory[4]  = 32'b00000010001000001001111001100011; // bne x1, x2, #60 (taken)
+        `U_IMEM_PATH.memory[5]  = 32'b00000000010100000000000010010011; // flushed
+        `U_IMEM_PATH.memory[6]  = 32'b00000000011000000000000100010011; // flushed
+        `U_IMEM_PATH.memory[7]  = 32'b00000000001000001000001000110011; // flushed
+        `U_IMEM_PATH.memory[19] = 32'b00000000100000000000000010010011; // addi x1, x0, 8
+        `U_IMEM_PATH.memory[20] = 32'b00000000100100000000000100010011; // addi x2, x0, 9
+
+        env.apply_reset();
+        env.run_cycles(45);
+
+        if (`U_REGFILE_PATH.X[1] != 64'h8) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[2] != 64'h9) pass = 1'b0;
+        if (`U_REGFILE_PATH.X[4] != 64'hb) pass = 1'b0;
+
+        $display("[branch] X1=0x%0h X2=0x%0h X4=0x%0h => %s",
+                 `U_REGFILE_PATH.X[1],
+                 `U_REGFILE_PATH.X[2],
+                 `U_REGFILE_PATH.X[4],
+                 pass ? "PASS" : "FAIL");
+        $finish;
+    end
+endmodule
+
+// Compatibility top used by current Makefile target.
+module test_cpu_bringup;
+    test_cpu_bringup_arithmetic u_default_test();
 endmodule
