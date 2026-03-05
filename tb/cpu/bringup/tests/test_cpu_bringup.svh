@@ -18,25 +18,13 @@
 
 // Usage: scripts/run.pl test_cpu_bringup
 
-`timescale 1ps/1ps
+class test_cpu_bringup extends test_cpu_bringup_base;
+    function new();
+        super.new("test_cpu_bringup");
+    endfunction
 
-module test_cpu_bringup;
-
-    `include "test_cpu_bringup_hw.svh"
-    `include "test_cpu_bringup_base.svh"
-
-    // No overrides — uses base class defaults (NOP sled, 20-cycle run)
-    class test_cpu_bringup_smoke extends test_cpu_bringup_base;
-        function new();
-            super.new("test_cpu_bringup");
-        endfunction
-
-        virtual task run();
-            wait_cycles(20);
-        endtask
-    endclass
-
-    `define BRINGUP_TEST_CLASS test_cpu_bringup_smoke
-    `include "test_cpu_bringup_run.svh"
-
-endmodule
+    // No overrides - uses base class defaults (NOP sled, 20-cycle run)
+    virtual task run();
+        wait_cycles(20);
+    endtask
+endclass
