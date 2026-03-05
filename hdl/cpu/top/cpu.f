@@ -20,8 +20,12 @@ ${CPU_DIR}/components/rv_shifter.sv
 ${CPU_DIR}/reg/rv_regfile.sv
 
 // Datapath
+${CPU_DIR}/datapath/rv_ifu.sv
+${CPU_DIR}/datapath/rv_idu.sv
+${CPU_DIR}/datapath/rv_exu.sv
+${CPU_DIR}/datapath/rv_memu.sv
+${CPU_DIR}/datapath/rv_wbu.sv
 ${CPU_DIR}/datapath/rv_datapath_ctrl.sv
-${CPU_DIR}/datapath/rv_datapath.sv
 
 // Top-level
 ${CPU_DIR}/top/rv_cpu.sv
