@@ -1,5 +1,5 @@
 /*
-* Default / smoke bringup test — runs the CPU with all NOPs.
+* Package for CPU bringup testbench.
 * Copyright (C) 2026 Alex Zhou
 *
 * This program is free software: you can redistribute it and/or modify
@@ -16,27 +16,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Usage: scripts/run.pl test_cpu_bringup
+// Note: DUT hierarchical path macros (U_IMEM_PATH, U_DMEM_PATH,
+// U_REGFILE_PATH) are defined in test_cpu_bringup_hw.svh, not here,
+// because `define is a preprocessor directive and must be visible at
+// the point of use rather than imported from a package.
 
-`timescale 1ps/1ps
-
-module test_cpu_bringup;
-
-    `include "test_cpu_bringup_hw.svh"
-    `include "test_cpu_bringup_base.svh"
-
-    // No overrides — uses base class defaults (NOP sled, 20-cycle run)
-    class test_cpu_bringup_smoke extends test_cpu_bringup_base;
-        function new();
-            super.new("test_cpu_bringup");
-        endfunction
-
-        virtual task run();
-            wait_cycles(20);
-        endtask
-    endclass
-
-    `define BRINGUP_TEST_CLASS test_cpu_bringup_smoke
-    `include "test_cpu_bringup_run.svh"
-
-endmodule
+package test_cpu_bringup_pkg;
+    // Reserved for future shared typedefs, parameters, or enums.
+endpackage

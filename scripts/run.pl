@@ -101,9 +101,11 @@ print "expanded  : $expanded_f\n";
 my @compile = (
     'verilator',
     '--binary', '--sv', '-Wall', '--timing',
+    '-Wno-TIMESCALEMOD',    # timescale only needed on tb top, not every submodule
     ($opt_trace ? '--trace' : ()),
     '--top-module', $testname,
     '--Mdir',       $work_dir,
+    "-I$tb_dir",        # allow `include of shared .svh headers in the tb dir
     '-f',           $expanded_f,
     $tb_file,
 );

@@ -1,5 +1,5 @@
 /*
-* Default / smoke bringup test — runs the CPU with all NOPs.
+* Run sequencer for CPU bringup tests.
 * Copyright (C) 2026 Alex Zhou
 *
 * This program is free software: you can redistribute it and/or modify
@@ -16,27 +16,27 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Usage: scripts/run.pl test_cpu_bringup
+// Include inside a module body, AFTER the derived test class is defined.
+// Requires `BRINGUP_TEST_CLASS to be defined to the derived class name, e.g.:
+//   `define BRINGUP_TEST_CLASS test_cpu_bringup_basic
 
-`timescale 1ps/1ps
+`BRINGUP_TEST_CLASS test;
 
-module test_cpu_bringup;
+initial begin
+    test = new();
+    test.init_imem();
+    test.set_imem();
+    test.load_imem();
+    test.apply_reset();
+    test.run();
+    test.check();
+    test.report();
+    test.print_pass_fail();
+    $finish;
+end
 
-    `include "test_cpu_bringup_hw.svh"
-    `include "test_cpu_bringup_base.svh"
-
-    // No overrides — uses base class defaults (NOP sled, 20-cycle run)
-    class test_cpu_bringup_smoke extends test_cpu_bringup_base;
-        function new();
-            super.new("test_cpu_bringup");
-        endfunction
-
-        virtual task run();
-            wait_cycles(20);
-        endtask
-    endclass
-
-    `define BRINGUP_TEST_CLASS test_cpu_bringup_smoke
-    `include "test_cpu_bringup_run.svh"
-
-endmodule
+initial begin
+    #100000;
+    $display("[TIMEOUT] Simulation exceeded time limit");
+    $finish;
+end
