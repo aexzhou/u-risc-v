@@ -101,20 +101,20 @@ module test_cpu_bringup_mem_hazard;
         env.init_imem_with_nops();
 
         // Setup sequence
-        env.u_cpu.u_datapath.u_imem.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
-        env.u_cpu.u_datapath.u_imem.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
-        env.u_cpu.u_datapath.u_imem.memory[2] = 32'b00000000011100001000000110010011; // addi x3, x1, 7
+        env.u_cpu.u_ifu.u_imem.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
+        env.u_cpu.u_ifu.u_imem.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
+        env.u_cpu.u_ifu.u_imem.memory[2] = 32'b00000000011100001000000110010011; // addi x3, x1, 7
         // MEM hazard sequence
-        env.u_cpu.u_datapath.u_imem.memory[3] = 32'b00000000001000001000000010110011; // add x1, x1, x2
-        env.u_cpu.u_datapath.u_imem.memory[4] = 32'b00000000001100001111000010110011; // and x1, x1, x3
-        env.u_cpu.u_datapath.u_imem.memory[5] = 32'b00000000010000001110000010110011; // or x1, x1, x4
+        env.u_cpu.u_ifu.u_imem.memory[3] = 32'b00000000001000001000000010110011; // add x1, x1, x2
+        env.u_cpu.u_ifu.u_imem.memory[4] = 32'b00000000001100001111000010110011; // and x1, x1, x3
+        env.u_cpu.u_ifu.u_imem.memory[5] = 32'b00000000010000001110000010110011; // or x1, x1, x4
 
         env.apply_reset();
         env.run_cycles(20);
 
-        if (env.u_cpu.u_datapath.u_regfile.X[1] != 64'hd) pass = 1'b0;
+        if (env.u_cpu.u_idu.u_regfile.X[1] != 64'hd) pass = 1'b0;
         $display("[mem_hazard] X1=0x%0h => %s",
-                 env.u_cpu.u_datapath.u_regfile.X[1],
+                 env.u_cpu.u_idu.u_regfile.X[1],
                  pass ? "PASS" : "FAIL");
         $finish;
     end
@@ -128,22 +128,22 @@ module test_cpu_bringup_memory;
         pass = 1'b1;
         env.init_imem_with_nops();
 
-        env.u_cpu.u_datapath.u_imem.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
-        env.u_cpu.u_datapath.u_imem.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
-        env.u_cpu.u_datapath.u_imem.memory[2] = 32'b00000000001000001000001000110011; // add x4, x1, x2
-        env.u_cpu.u_datapath.u_imem.memory[3] = 32'b00000000010000010010000000100011; // sw x4, 0(x2)
-        env.u_cpu.u_datapath.u_imem.memory[4] = 32'b00000000000000010101000100000011; // lw x2, 0(x2)
+        env.u_cpu.u_ifu.u_imem.memory[0] = 32'b00000000010100000000000010010011; // addi x1, x0, 5
+        env.u_cpu.u_ifu.u_imem.memory[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
+        env.u_cpu.u_ifu.u_imem.memory[2] = 32'b00000000001000001000001000110011; // add x4, x1, x2
+        env.u_cpu.u_ifu.u_imem.memory[3] = 32'b00000000010000010010000000100011; // sw x4, 0(x2)
+        env.u_cpu.u_ifu.u_imem.memory[4] = 32'b00000000000000010101000100000011; // lw x2, 0(x2)
 
         env.apply_reset();
         env.run_cycles(20);
 
-        if (env.u_cpu.u_datapath.u_dmem.memory[0] != env.u_cpu.u_datapath.u_regfile.X[4]) pass = 1'b0;
-        if (env.u_cpu.u_datapath.u_regfile.X[2] != env.u_cpu.u_datapath.u_dmem.memory[0]) pass = 1'b0;
+        if (env.u_cpu.u_memu.u_dmem.memory[0] != env.u_cpu.u_idu.u_regfile.X[4]) pass = 1'b0;
+        if (env.u_cpu.u_idu.u_regfile.X[2] != env.u_cpu.u_memu.u_dmem.memory[0]) pass = 1'b0;
 
         $display("[memory] dmem[0]=0x%0h X2=0x%0h X4=0x%0h => %s",
-                 env.u_cpu.u_datapath.u_dmem.memory[0],
-                 env.u_cpu.u_datapath.u_regfile.X[2],
-                 env.u_cpu.u_datapath.u_regfile.X[4],
+                 env.u_cpu.u_ifu.u_imem.memory[0],
+                 env.u_cpu.u_idu.u_regfile.X[2],
+                 env.u_cpu.u_idu.u_regfile.X[4],
                  pass ? "PASS" : "FAIL");
         $finish;
     end
