@@ -7,9 +7,11 @@
 # Single test:
 #   scripts/run test_cpu_bringup_basic
 #   scripts/run --trace test_cpu_bringup_basic
+#   scripts/run -j 4 test_cpu_bringup_basic      # Verilator multithreaded
 #
 # Regression:
 #   scripts/run -r regress_cpu_bringup
+#   scripts/run -r regress_cpu_bringup -j 4      # run 4 tests in parallel
 #   scripts/run --trace --regress regress_cpu_bringup
 #
 # The script will:
@@ -23,12 +25,16 @@
 #
 # Regression mode reads a <regressname>.list file from tb/, runs each listed
 # test, and places outputs under rundir/<regressname>/<testname>/.
+# With -j N, up to N tests run in parallel (1 core per test); output for each
+# test is captured to rundir/<regressname>/<testname>/run.log.
 
 import argparse
+import concurrent.futures
 import os
 import re
 import subprocess
 import sys
+import threading
 
 # ---------------------------------------------------------------------------
 # Locate repo root (one level up from this script)
@@ -40,9 +46,12 @@ repo_root  = os.path.dirname(script_dir)
 # Parse arguments
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(
-    usage='%(prog)s [--trace] <testname> | -r <regressname>'
+    usage='%(prog)s [--trace] [-j N] <testname> | -r <regressname>'
 )
 parser.add_argument('--trace', action='store_true')
+parser.add_argument('-j', type=int, metavar='N', default=1,
+                    help='Single-test: Verilator thread count. '
+                         'Regression: number of tests to run in parallel.')
 parser.add_argument('-r', '--regress', metavar='REGRESSNAME',
                     help='Run all tests listed in <REGRESSNAME>.list')
 parser.add_argument('testname', nargs='?', help='Single test to run')
@@ -53,6 +62,8 @@ if args.regress and args.testname:
 if not args.regress and not args.testname:
     parser.print_usage()
     sys.exit("ERROR: must specify a testname or --regress/-r <regressname>")
+if args.j < 1:
+    sys.exit("ERROR: -j must be >= 1")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,8 +102,20 @@ def expand_vars(line):
     return re.sub(r'\$\{(\w+)\}', replace, line)
 
 
-def run_test(testname, run_dir, trace):
-    """Build and simulate a single test, placing outputs in run_dir."""
+def run_test(testname, run_dir, trace, threads=1, log=None):
+    """Build and simulate a single test, placing outputs in run_dir.
+
+    threads: passed as --threads to Verilator (single-test mode).
+    log:     open file object; when set, all output (prints + subprocess)
+             goes there instead of stdout. Used in parallel regression.
+    """
+    def emit(msg=''):
+        print(msg, file=log) if log else print(msg)
+
+    def run_cmd(cmd, **kwargs):
+        if log:
+            return subprocess.run(cmd, stdout=log, stderr=log, **kwargs)
+        return subprocess.run(cmd, **kwargs)
 
     # Find testbench file
     tb_file, test_style = find_tb_file(testname)
@@ -100,7 +123,7 @@ def run_test(testname, run_dir, trace):
         raise RuntimeError(
             f"could not find '{testname}.svh' or '{testname}.sv' under {repo_root}/tb"
         )
-    print(f"testbench : {tb_file}  ({test_style})")
+    emit(f"testbench : {tb_file}  ({test_style})")
 
     # Output directories
     work_dir = os.path.join(run_dir, 'work' + ('_trace' if trace else ''))
@@ -124,7 +147,7 @@ def run_test(testname, run_dir, trace):
         content = content.replace('%%TESTNAME%%', testname)
         with open(wrapper, 'w') as f:
             f.write(content)
-        print(f"generated : {wrapper}")
+        emit(f"generated : {wrapper}")
 
         verilator_top = wrapper
         include_dirs  = [env_dir, tests_dir]
@@ -140,10 +163,10 @@ def run_test(testname, run_dir, trace):
 
     if os.path.isfile(per_test_f):
         src_f = per_test_f
-        print(f"filelist  : {src_f}  (per-test)")
+        emit(f"filelist  : {src_f}  (per-test)")
     elif os.path.isfile(default_f):
         src_f = default_f
-        print(f"filelist  : {src_f}  (default)")
+        emit(f"filelist  : {src_f}  (default)")
     else:
         raise RuntimeError(
             f"no filelist found for '{testname}'.\n"
@@ -156,14 +179,16 @@ def run_test(testname, run_dir, trace):
     with open(src_f, 'r') as fin, open(expanded_f, 'w') as fout:
         for line in fin:
             fout.write(expand_vars(line))
-    print(f"expanded  : {expanded_f}")
+    emit(f"expanded  : {expanded_f}")
 
     # Compile with Verilator
     compile_cmd = [
         'verilator',
         '--binary', '--sv', '-Wall', '--timing',
         '-Wno-TIMESCALEMOD',
-    ] + (['--trace'] if trace else []) + [
+    ] + (['--trace'] if trace else []) + (
+        ['--threads', str(threads)] if threads > 1 else []
+    ) + [
         '--top-module', testname,
         '--Mdir',       work_dir,
     ] + [f'-I{d}' for d in include_dirs] + [
@@ -171,9 +196,9 @@ def run_test(testname, run_dir, trace):
         verilator_top,
     ]
 
-    print('\n--- compile ---')
-    print(' '.join(compile_cmd), '\n')
-    result = subprocess.run(compile_cmd)
+    emit('\n--- compile ---')
+    emit(' '.join(compile_cmd) + '\n')
+    result = run_cmd(compile_cmd)
     if result.returncode != 0:
         raise RuntimeError(f"Verilator compilation failed (exit {result.returncode})")
 
@@ -182,15 +207,15 @@ def run_test(testname, run_dir, trace):
     if not os.access(sim_bin, os.X_OK):
         raise RuntimeError(f"compiled binary not found: {sim_bin}")
 
-    print('\n--- simulate ---')
-    print(f"cwd: {run_dir}")
-    print(f"{sim_bin}\n")
+    emit('\n--- simulate ---')
+    emit(f"cwd: {run_dir}")
+    emit(f"{sim_bin}\n")
 
-    result = subprocess.run([sim_bin], cwd=run_dir)
+    result = run_cmd([sim_bin], cwd=run_dir)
     if result.returncode != 0:
         raise RuntimeError(f"Simulation exited with non-zero status ({result.returncode})")
 
-    print(f"\nOutputs in {run_dir}")
+    emit(f"\nOutputs in {run_dir}")
 
 # ---------------------------------------------------------------------------
 # Single-test mode
@@ -198,7 +223,7 @@ def run_test(testname, run_dir, trace):
 if args.testname:
     run_dir = os.path.join(repo_root, 'rundir', args.testname)
     try:
-        run_test(args.testname, run_dir, args.trace)
+        run_test(args.testname, run_dir, args.trace, threads=args.j)
     except RuntimeError as e:
         sys.exit(f"ERROR: {e}")
 
@@ -232,28 +257,55 @@ else:
     regress_dir = os.path.join(repo_root, 'rundir', regressname)
     os.makedirs(regress_dir, exist_ok=True)
 
-    # Run each test, collecting pass/fail
-    results = {}
-    for testname in tests:
-        print(f"\n{'='*60}")
-        print(f"Running: {testname}")
-        print('='*60)
-        run_dir = os.path.join(regress_dir, testname)
-        try:
-            run_test(testname, run_dir, args.trace)
-            results[testname] = 'PASS'
-        except RuntimeError as e:
-            print(f"\nERROR: {e}")
-            results[testname] = 'FAIL'
+    parallel = args.j > 1
+    print_lock = threading.Lock()
 
-    # Summary
+    def run_one(testname):
+        run_dir  = os.path.join(regress_dir, testname)
+        log_path = os.path.join(run_dir, 'run.log')
+        os.makedirs(run_dir, exist_ok=True)
+
+        if parallel:
+            with print_lock:
+                print(f"  START  {testname}")
+            try:
+                with open(log_path, 'w') as log:
+                    run_test(testname, run_dir, args.trace, log=log)
+                with print_lock:
+                    print(f"  PASS   {testname}")
+                return (testname, 'PASS')
+            except RuntimeError as e:
+                with print_lock:
+                    print(f"  FAIL   {testname}  (see {log_path})")
+                return (testname, 'FAIL')
+        else:
+            print(f"\n{'='*60}")
+            print(f"Running: {testname}")
+            print('='*60)
+            try:
+                run_test(testname, run_dir, args.trace)
+                return (testname, 'PASS')
+            except RuntimeError as e:
+                print(f"\nERROR: {e}")
+                return (testname, 'FAIL')
+
+    if parallel:
+        print(f"parallelism: -j {args.j}\n")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.j) as executor:
+            outcome_list = list(executor.map(run_one, tests))
+    else:
+        outcome_list = [run_one(t) for t in tests]
+
+    # Preserve original test order in summary
+    results = dict(outcome_list)
+
     print(f"\n{'='*60}")
     print(f"Regression Summary: {regressname}")
     print('='*60)
-    for t, status in results.items():
-        print(f"  {status}  {t}")
+    for t in tests:
+        print(f"  {results[t]}  {t}")
 
-    failed = [t for t, s in results.items() if s == 'FAIL']
+    failed = [t for t in tests if results[t] == 'FAIL']
     if failed:
         sys.exit(f"\n{len(failed)}/{len(tests)} tests FAILED")
     else:
