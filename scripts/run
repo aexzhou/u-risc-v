@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 # run - build and run a simulation test (or regression) with Verilator
 #
-# Usage: scripts/run [options] <testname>
-#        scripts/run [options] -r <regressname>
+# Usage: scripts/run [options] <testname|regressname>
 #
 # Single test:
 #   scripts/run test_cpu_bringup_basic
 #   scripts/run --trace test_cpu_bringup_basic
 #   scripts/run -j 4 test_cpu_bringup_basic      # Verilator multithreaded
 #
-# Regression:
-#   scripts/run -r regress_cpu_bringup
-#   scripts/run -r regress_cpu_bringup -j 4      # run 4 tests in parallel
-#   scripts/run --trace --regress regress_cpu_bringup
+# Regression (name must start with regress_):
+#   scripts/run regress_cpu_bringup
+#   scripts/run regress_cpu_bringup -j 4         # run 4 tests in parallel
+#   scripts/run --trace regress_cpu_bringup
 #
 # The script will:
 #   1. Find <testname>.svh (new style) or <testname>.sv (legacy) under tb/
@@ -43,26 +42,27 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root  = os.path.dirname(script_dir)
 
 # ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+DEFAULT_REGRESS_JOBS = 2   # parallel tests when -j is not specified in regression mode
+
+# ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(
-    usage='%(prog)s [--trace] [-j N] <testname> | -r <regressname>'
+    usage='%(prog)s [--trace] [-j N] <testname|regressname>'
 )
 parser.add_argument('--trace', action='store_true')
-parser.add_argument('-j', type=int, metavar='N', default=1,
-                    help='Single-test: Verilator thread count. '
-                         'Regression: number of tests to run in parallel.')
-parser.add_argument('-r', '--regress', metavar='REGRESSNAME',
-                    help='Run all tests listed in <REGRESSNAME>.list')
-parser.add_argument('testname', nargs='?', help='Single test to run')
+parser.add_argument('-j', type=int, metavar='N', default=None,
+                    help='Single-test: Verilator thread count (default 1). '
+                         f'Regression: parallel test count (default {DEFAULT_REGRESS_JOBS}).')
+parser.add_argument('name', help='Test name or regression list name (regress_* prefix triggers regression mode)')
 args = parser.parse_args()
 
-if args.regress and args.testname:
-    sys.exit("ERROR: cannot specify both a testname and --regress/-r")
-if not args.regress and not args.testname:
-    parser.print_usage()
-    sys.exit("ERROR: must specify a testname or --regress/-r <regressname>")
-if args.j < 1:
+is_regress = args.name.startswith('regress_')
+jobs = args.j if args.j is not None else (DEFAULT_REGRESS_JOBS if is_regress else 1)
+
+if jobs < 1:
     sys.exit("ERROR: -j must be >= 1")
 
 # ---------------------------------------------------------------------------
@@ -220,10 +220,10 @@ def run_test(testname, run_dir, trace, threads=1, log=None):
 # ---------------------------------------------------------------------------
 # Single-test mode
 # ---------------------------------------------------------------------------
-if args.testname:
-    run_dir = os.path.join(repo_root, 'rundir', args.testname)
+if not is_regress:
+    run_dir = os.path.join(repo_root, 'rundir', args.name)
     try:
-        run_test(args.testname, run_dir, args.trace, threads=args.j)
+        run_test(args.name, run_dir, args.trace, threads=jobs)
     except RuntimeError as e:
         sys.exit(f"ERROR: {e}")
 
@@ -231,7 +231,7 @@ if args.testname:
 # Regression mode
 # ---------------------------------------------------------------------------
 else:
-    regressname = args.regress
+    regressname = args.name
 
     # Find the .list file under tb/
     list_file = None
@@ -244,7 +244,8 @@ else:
             break
 
     if list_file is None:
-        sys.exit(f"ERROR: could not find '{regressname}.list' under {repo_root}/tb")
+        sys.exit(f"ERROR: could not find '{regressname}.list' under {repo_root}/tb  "
+                 f"(names starting with regress_ are treated as regression lists)")
 
     print(f"regression: {list_file}")
 
@@ -257,7 +258,7 @@ else:
     regress_dir = os.path.join(repo_root, 'rundir', regressname)
     os.makedirs(regress_dir, exist_ok=True)
 
-    parallel = args.j > 1
+    parallel = jobs > 1
     print_lock = threading.Lock()
 
     def run_one(testname):
@@ -290,8 +291,8 @@ else:
                 return (testname, 'FAIL')
 
     if parallel:
-        print(f"parallelism: -j {args.j}\n")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.j) as executor:
+        print(f"regression: Running with {jobs} cores\n")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
             outcome_list = list(executor.map(run_one, tests))
     else:
         outcome_list = [run_one(t) for t in tests]
