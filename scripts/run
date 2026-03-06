@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-# run.py - build and run a simulation test with Verilator
+# run - build and run a simulation test (or regression) with Verilator
 #
-# Usage: scripts/run.py [options] <testname>
-# Example: scripts/run.py test_cpu_bringup
-#          scripts/run.py --trace test_cpu_bringup_basic
+# Usage: scripts/run [options] <testname>
+#        scripts/run [options] -r <regressname>
+#
+# Single test:
+#   scripts/run test_cpu_bringup_basic
+#   scripts/run --trace test_cpu_bringup_basic
+#
+# Regression:
+#   scripts/run -r regress_cpu_bringup
+#   scripts/run --trace --regress regress_cpu_bringup
 #
 # The script will:
 #   1. Find <testname>.svh (new style) or <testname>.sv (legacy) under tb/
@@ -13,6 +20,9 @@
 #   4. Expand path variables in the filelist
 #   5. Compile with Verilator into rundir/<testname>/work/
 #   6. Run the simulation (outputs, waveform.vcd land in rundir/<testname>/)
+#
+# Regression mode reads a <regressname>.list file from tb/, runs each listed
+# test, and places outputs under rundir/<regressname>/<testname>/.
 
 import argparse
 import os
@@ -29,97 +39,43 @@ repo_root  = os.path.dirname(script_dir)
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
-parser = argparse.ArgumentParser(usage='%(prog)s [--trace] <testname>')
+parser = argparse.ArgumentParser(
+    usage='%(prog)s [--trace] <testname> | -r <regressname>'
+)
 parser.add_argument('--trace', action='store_true')
-parser.add_argument('testname')
+parser.add_argument('-r', '--regress', metavar='REGRESSNAME',
+                    help='Run all tests listed in <REGRESSNAME>.list')
+parser.add_argument('testname', nargs='?', help='Single test to run')
 args = parser.parse_args()
-testname = args.testname
+
+if args.regress and args.testname:
+    sys.exit("ERROR: cannot specify both a testname and --regress/-r")
+if not args.regress and not args.testname:
+    parser.print_usage()
+    sys.exit("ERROR: must specify a testname or --regress/-r <regressname>")
 
 # ---------------------------------------------------------------------------
-# Find the testbench file under tb/ (.svh new style, .sv legacy)
+# Helpers
 # ---------------------------------------------------------------------------
-tb_file    = None
-test_style = None
 
-for dirpath, dirnames, filenames in os.walk(os.path.join(repo_root, 'tb')):
-    if tb_file:
-        break
-    for fname in filenames:
-        if fname == f'{testname}.svh':
-            tb_file    = os.path.join(dirpath, fname)
-            test_style = 'svh'
+def find_tb_file(testname):
+    """Search tb/ for <testname>.svh (preferred) or <testname>.sv (legacy)."""
+    tb_file    = None
+    test_style = None
+    for dirpath, _dirnames, filenames in os.walk(os.path.join(repo_root, 'tb')):
+        if tb_file:
             break
-        elif fname == f'{testname}.sv' and tb_file is None:
-            tb_file    = os.path.join(dirpath, fname)
-            test_style = 'sv'
+        for fname in filenames:
+            if fname == f'{testname}.svh':
+                tb_file    = os.path.join(dirpath, fname)
+                test_style = 'svh'
+                break
+            elif fname == f'{testname}.sv' and tb_file is None:
+                tb_file    = os.path.join(dirpath, fname)
+                test_style = 'sv'
+    return tb_file, test_style
 
-if tb_file is None:
-    sys.exit(f"ERROR: could not find '{testname}.svh' or '{testname}.sv' under {repo_root}/tb")
 
-print(f"testbench : {tb_file}  ({test_style})")
-
-# ---------------------------------------------------------------------------
-# Prepare output directories (needed before generating wrapper)
-# ---------------------------------------------------------------------------
-run_dir  = os.path.join(repo_root, 'rundir', testname)
-work_dir = run_dir + '/work' + ('_trace' if args.trace else '')
-os.makedirs(work_dir, exist_ok=True)
-
-# ---------------------------------------------------------------------------
-# For .svh tests: generate the thin module wrapper from the template.
-# For .sv tests:  use the file as-is (legacy path).
-# ---------------------------------------------------------------------------
-if test_style == 'svh':
-    tests_dir   = os.path.dirname(tb_file)                # .../tb/cpu/bringup/tests
-    bringup_dir = os.path.dirname(tests_dir)              # .../tb/cpu/bringup
-    env_dir     = os.path.join(bringup_dir, 'env')
-    tmpl_file   = os.path.join(bringup_dir, 'template', 'bringup_wrapper.sv.tmpl')
-
-    if not os.path.isdir(env_dir):
-        sys.exit(f"ERROR: env dir not found: {env_dir}")
-    if not os.path.isfile(tmpl_file):
-        sys.exit(f"ERROR: wrapper template not found: {tmpl_file}")
-
-    wrapper = os.path.join(run_dir, f'{testname}.sv')
-    with open(tmpl_file, 'r') as f:
-        content = f.read()
-    content = content.replace('%%TESTNAME%%', testname)
-    with open(wrapper, 'w') as f:
-        f.write(content)
-    print(f"generated : {wrapper}")
-
-    verilator_top = wrapper
-    include_dirs  = [env_dir, tests_dir]
-else:
-    tb_dir        = os.path.dirname(tb_file)
-    verilator_top = tb_file
-    include_dirs  = [tb_dir]
-
-# ---------------------------------------------------------------------------
-# Resolve the filelist (.f)
-# Convention: a <testname>.f next to the testbench takes priority;
-#             otherwise fall back to hdl/cpu/top/cpu.f
-# ---------------------------------------------------------------------------
-tb_dir_for_f = os.path.dirname(tb_file)
-per_test_f   = os.path.join(tb_dir_for_f, f'{testname}.f')
-default_f    = os.path.join(repo_root, 'hdl', 'cpu', 'top', 'cpu.f')
-
-if os.path.isfile(per_test_f):
-    src_f = per_test_f
-    print(f"filelist  : {src_f}  (per-test)")
-elif os.path.isfile(default_f):
-    src_f = default_f
-    print(f"filelist  : {src_f}  (default)")
-else:
-    sys.exit(
-        f"ERROR: no filelist found for '{testname}'.\n"
-        f"  Looked for: {per_test_f}\n"
-        f"  Fallback  : {default_f}"
-    )
-
-# ---------------------------------------------------------------------------
-# Expand path variables in the filelist and write to run_dir
-# ---------------------------------------------------------------------------
 vars_ = {
     'CPU_DIR'       : os.path.join(repo_root, 'hdl', 'cpu'),
     'COMMON_DIR'    : os.path.join(repo_root, 'hdl', 'common'),
@@ -134,47 +90,171 @@ def expand_vars(line):
         sys.exit(f"Unknown variable ${key} in filelist")
     return re.sub(r'\$\{(\w+)\}', replace, line)
 
-expanded_f = os.path.join(run_dir, 'expanded.f')
-with open(src_f, 'r') as fin, open(expanded_f, 'w') as fout:
-    for line in fin:
-        fout.write(expand_vars(line))
 
-print(f"expanded  : {expanded_f}")
+def run_test(testname, run_dir, trace):
+    """Build and simulate a single test, placing outputs in run_dir."""
+
+    # Find testbench file
+    tb_file, test_style = find_tb_file(testname)
+    if tb_file is None:
+        raise RuntimeError(
+            f"could not find '{testname}.svh' or '{testname}.sv' under {repo_root}/tb"
+        )
+    print(f"testbench : {tb_file}  ({test_style})")
+
+    # Output directories
+    work_dir = os.path.join(run_dir, 'work' + ('_trace' if trace else ''))
+    os.makedirs(work_dir, exist_ok=True)
+
+    # Generate wrapper (svh) or use file directly (sv)
+    if test_style == 'svh':
+        tests_dir   = os.path.dirname(tb_file)
+        bringup_dir = os.path.dirname(tests_dir)
+        env_dir     = os.path.join(bringup_dir, 'env')
+        tmpl_file   = os.path.join(bringup_dir, 'template', 'bringup_wrapper.sv.tmpl')
+
+        if not os.path.isdir(env_dir):
+            raise RuntimeError(f"env dir not found: {env_dir}")
+        if not os.path.isfile(tmpl_file):
+            raise RuntimeError(f"wrapper template not found: {tmpl_file}")
+
+        wrapper = os.path.join(run_dir, f'{testname}.sv')
+        with open(tmpl_file, 'r') as f:
+            content = f.read()
+        content = content.replace('%%TESTNAME%%', testname)
+        with open(wrapper, 'w') as f:
+            f.write(content)
+        print(f"generated : {wrapper}")
+
+        verilator_top = wrapper
+        include_dirs  = [env_dir, tests_dir]
+    else:
+        tb_dir        = os.path.dirname(tb_file)
+        verilator_top = tb_file
+        include_dirs  = [tb_dir]
+
+    # Resolve filelist
+    tb_dir_for_f = os.path.dirname(tb_file)
+    per_test_f   = os.path.join(tb_dir_for_f, f'{testname}.f')
+    default_f    = os.path.join(repo_root, 'hdl', 'cpu', 'top', 'cpu.f')
+
+    if os.path.isfile(per_test_f):
+        src_f = per_test_f
+        print(f"filelist  : {src_f}  (per-test)")
+    elif os.path.isfile(default_f):
+        src_f = default_f
+        print(f"filelist  : {src_f}  (default)")
+    else:
+        raise RuntimeError(
+            f"no filelist found for '{testname}'.\n"
+            f"  Looked for: {per_test_f}\n"
+            f"  Fallback  : {default_f}"
+        )
+
+    # Expand path variables and write expanded filelist
+    expanded_f = os.path.join(run_dir, 'expanded.f')
+    with open(src_f, 'r') as fin, open(expanded_f, 'w') as fout:
+        for line in fin:
+            fout.write(expand_vars(line))
+    print(f"expanded  : {expanded_f}")
+
+    # Compile with Verilator
+    compile_cmd = [
+        'verilator',
+        '--binary', '--sv', '-Wall', '--timing',
+        '-Wno-TIMESCALEMOD',
+    ] + (['--trace'] if trace else []) + [
+        '--top-module', testname,
+        '--Mdir',       work_dir,
+    ] + [f'-I{d}' for d in include_dirs] + [
+        '-f',           expanded_f,
+        verilator_top,
+    ]
+
+    print('\n--- compile ---')
+    print(' '.join(compile_cmd), '\n')
+    result = subprocess.run(compile_cmd)
+    if result.returncode != 0:
+        raise RuntimeError(f"Verilator compilation failed (exit {result.returncode})")
+
+    # Run simulation
+    sim_bin = os.path.join(work_dir, f'V{testname}')
+    if not os.access(sim_bin, os.X_OK):
+        raise RuntimeError(f"compiled binary not found: {sim_bin}")
+
+    print('\n--- simulate ---')
+    print(f"cwd: {run_dir}")
+    print(f"{sim_bin}\n")
+
+    result = subprocess.run([sim_bin], cwd=run_dir)
+    if result.returncode != 0:
+        raise RuntimeError(f"Simulation exited with non-zero status ({result.returncode})")
+
+    print(f"\nOutputs in {run_dir}")
 
 # ---------------------------------------------------------------------------
-# Compile with Verilator
+# Single-test mode
 # ---------------------------------------------------------------------------
-compile_cmd = [
-    'verilator',
-    '--binary', '--sv', '-Wall', '--timing',
-    '-Wno-TIMESCALEMOD',
-] + (['--trace'] if args.trace else []) + [
-    '--top-module', testname,
-    '--Mdir',       work_dir,
-] + [f'-I{d}' for d in include_dirs] + [
-    '-f',           expanded_f,
-    verilator_top,
-]
-
-print('\n--- compile ---')
-print(' '.join(compile_cmd), '\n')
-result = subprocess.run(compile_cmd)
-if result.returncode != 0:
-    sys.exit(f"Verilator compilation failed (exit {result.returncode})")
+if args.testname:
+    run_dir = os.path.join(repo_root, 'rundir', args.testname)
+    try:
+        run_test(args.testname, run_dir, args.trace)
+    except RuntimeError as e:
+        sys.exit(f"ERROR: {e}")
 
 # ---------------------------------------------------------------------------
-# Run the simulation from run_dir so waveform.vcd lands there
+# Regression mode
 # ---------------------------------------------------------------------------
-sim_bin = os.path.join(work_dir, f'V{testname}')
-if not os.access(sim_bin, os.X_OK):
-    sys.exit(f"ERROR: compiled binary not found: {sim_bin}")
+else:
+    regressname = args.regress
 
-print('\n--- simulate ---')
-print(f"cwd: {run_dir}")
-print(f"{sim_bin}\n")
+    # Find the .list file under tb/
+    list_file = None
+    for dirpath, _dirnames, filenames in os.walk(os.path.join(repo_root, 'tb')):
+        for fname in filenames:
+            if fname == f'{regressname}.list':
+                list_file = os.path.join(dirpath, fname)
+                break
+        if list_file:
+            break
 
-result = subprocess.run([sim_bin], cwd=run_dir)
-if result.returncode != 0:
-    sys.exit(f"Simulation exited with non-zero status ({result.returncode})")
+    if list_file is None:
+        sys.exit(f"ERROR: could not find '{regressname}.list' under {repo_root}/tb")
 
-print(f"\nOutputs in {run_dir}")
+    print(f"regression: {list_file}")
+
+    with open(list_file, 'r') as f:
+        tests = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+    if not tests:
+        sys.exit(f"ERROR: no tests found in {list_file}")
+
+    regress_dir = os.path.join(repo_root, 'rundir', regressname)
+    os.makedirs(regress_dir, exist_ok=True)
+
+    # Run each test, collecting pass/fail
+    results = {}
+    for testname in tests:
+        print(f"\n{'='*60}")
+        print(f"Running: {testname}")
+        print('='*60)
+        run_dir = os.path.join(regress_dir, testname)
+        try:
+            run_test(testname, run_dir, args.trace)
+            results[testname] = 'PASS'
+        except RuntimeError as e:
+            print(f"\nERROR: {e}")
+            results[testname] = 'FAIL'
+
+    # Summary
+    print(f"\n{'='*60}")
+    print(f"Regression Summary: {regressname}")
+    print('='*60)
+    for t, status in results.items():
+        print(f"  {status}  {t}")
+
+    failed = [t for t, s in results.items() if s == 'FAIL']
+    if failed:
+        sys.exit(f"\n{len(failed)}/{len(tests)} tests FAILED")
+    else:
+        print(f"\nAll {len(tests)} tests passed.")
