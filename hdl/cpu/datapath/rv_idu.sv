@@ -39,6 +39,7 @@ module rv_idu #(
 logic [DW-1:0] imm, sh_imm;
 logic          hazard_flag, equal_flag;
 logic [DW-1:0] regout1, regout2;
+logic [DW-1:0] id_rs1_val, id_rs2_val;
 
 // Control outputs
 logic [1:0]    alu_op;
@@ -78,6 +79,16 @@ rv_regfile u_regfile (
     .data_out2  (regout2)
 );
 
+logic mwb_regwrite_non_x0;
+logic forward_mwb_to_rs1, forward_mwb_to_rs2;
+
+assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
+assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
+assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
+
+assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
+assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
+
 rv_hdu u_hdu (
     .ifid_rs1    (ifid_i[19:15]),
     .ifid_rs2    (ifid_i[24:20]),
@@ -89,7 +100,7 @@ rv_hdu u_hdu (
 );
 
 // Early branch resolution: compare the two source registers (held in idex_a/b)
-assign equal_flag = (idex_a == idex_b);
+assign equal_flag = (id_rs1_val == id_rs2_val);
 
 // ID/EX pipeline registers
 always_ff @(posedge clk or negedge rst_n) begin
@@ -107,8 +118,8 @@ always_ff @(posedge clk or negedge rst_n) begin
         idex_rs1        <= ifid_i[19:15];
         idex_rs2        <= ifid_i[24:20];
         idex_rd         <= ifid_i[11:7];
-        idex_a          <= regout1;
-        idex_b          <= regout2;
+        idex_a          <= id_rs1_val;
+        idex_b          <= id_rs2_val;
         idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
         idex_imm        <= imm;
 
