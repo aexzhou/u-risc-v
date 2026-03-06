@@ -11,9 +11,10 @@ _run_py_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     script="${COMP_WORDS[0]}"
 
-    # Resolve repo root: one level up from the directory containing run.py
+    # Resolve repo root: one level up from the directory containing run
     local script_abs
-    script_abs="$(realpath "$script" 2>/dev/null || readlink -f "$script" 2>/dev/null || echo "$script")"
+    script_abs="$(command -v "$script" 2>/dev/null || echo "$script")"
+    script_abs="$(realpath "$script_abs" 2>/dev/null || readlink -f "$script_abs" 2>/dev/null || echo "$script_abs")"
     repo_root="$(dirname "$(dirname "$script_abs")")"
 
     [[ -d "$repo_root/tb" ]] || return 0
@@ -34,6 +35,4 @@ _run_py_completions() {
     COMPREPLY=( $(compgen -W "$tests" -- "$cur") )
 }
 
-complete -F _run_py_completions run.py
-complete -F _run_py_completions scripts/run.py
-complete -F _run_py_completions ./scripts/run.py
+complete -F _run_py_completions run
