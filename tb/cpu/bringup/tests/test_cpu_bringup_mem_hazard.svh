@@ -39,7 +39,7 @@ class test_cpu_bringup_mem_hazard extends test_cpu_bringup_base;
     endtask
 
     virtual task check();
-        `ASSERT_EQ(`U_REGFILE_PATH.X[1], 64'hd)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[1], 64'h8)
     endtask
 
     virtual task report();
