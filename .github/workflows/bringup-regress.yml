@@ -1,0 +1,48 @@
+name: Bringup Regression
+
+on:
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  regress-cpu-bringup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Verilator prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git help2man perl python3 make autoconf g++ flex bison ccache \
+            libgoogle-perftools-dev numactl perl-doc \
+            libfl-dev libfl2 zlib1g zlib1g-dev
+
+      - name: Build and install Verilator
+        shell: bash
+        run: |
+          unset VERILATOR_ROOT || true
+          git clone https://github.com/verilator/verilator /tmp/verilator-src
+          cd /tmp/verilator-src
+          git pull
+          autoconf
+          ./configure
+          make -j $(nproc)
+          sudo make install
+          verilator --version
+
+      - name: Run bringup regression
+        shell: bash
+        run: |
+          source env.sh
+          run regress_cpu_bringup -j 2
+
+      - name: Upload regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regress-cpu-bringup-rundir
+          path: rundir/regress_cpu_bringup/**
+          if-no-files-found: warn
