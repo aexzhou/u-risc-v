@@ -5,34 +5,19 @@ module rv_fwdu(
 );
 
     always_comb begin
-        if (exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs1)) begin
+        // No forwarding by default, then resolve each operand independently
+        forward_a = 2'b00;
+        forward_b = 2'b00;
+
+        if (exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs1))
             forward_a = 2'b10; // Forward from EX/MEM
-            forward_b = 2'b00;
-        end
-        else if (exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs2)) begin
-            forward_a = 2'b00;
+        else if (mwb_regwrite && (mwb_rd != 0) && (mwb_rd == idex_rs1))
+            forward_a = 2'b01; // Forward from MEM/WB
+
+        if (exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs2))
             forward_b = 2'b10; // Forward from EX/MEM
-        end
-        // Forward from MEM/WB pipeline register
-        else if (mwb_regwrite
-                && (mwb_rd != 0)
-                && ~(exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs1))
-                && (mwb_rd == idex_rs1)) begin
-            forward_a = 2'b01;
-            forward_b = 2'b00;
-        end
-        else if (mwb_regwrite
-                && (mwb_rd != 0)
-                && ~(exm_regwrite && (exm_rd != 0) && (exm_rd == idex_rs2))
-                && (mwb_rd == idex_rs2)) begin
-            forward_a = 2'b00;
-            forward_b = 2'b01;
-        end
-        else begin
-            // No forwarding, ALU operands come from the register file
-            forward_a = 2'b00;
-            forward_b = 2'b00;
-        end
+        else if (mwb_regwrite && (mwb_rd != 0) && (mwb_rd == idex_rs2))
+            forward_b = 2'b01; // Forward from MEM/WB
     end
 
 endmodule
