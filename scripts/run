@@ -50,14 +50,14 @@ DEFAULT_REGRESS_JOBS = 2   # parallel tests when -j is not specified in regressi
 # Parse arguments
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(
-    usage='%(prog)s [--trace] [-j N] <testname|regressname>'
+    usage='%(prog)s [--trace] [-j N] <testname|regressname> [-- <verilator-args>...]'
 )
 parser.add_argument('--trace', action='store_true')
 parser.add_argument('-j', type=int, metavar='N', default=None,
                     help='Single-test: Verilator thread count (default 1). '
                          f'Regression: parallel test count (default {DEFAULT_REGRESS_JOBS}).')
 parser.add_argument('name', help='Test name or regression list name (regress_* prefix triggers regression mode)')
-args = parser.parse_args()
+args, extra_verilator_args = parser.parse_known_args()
 
 is_regress = args.name.startswith('regress_')
 jobs = args.j if args.j is not None else (DEFAULT_REGRESS_JOBS if is_regress else 1)
@@ -102,7 +102,7 @@ def expand_vars(line):
     return re.sub(r'\$\{(\w+)\}', replace, line)
 
 
-def run_test(testname, run_dir, trace, threads=1, log=None):
+def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args=None):
     """Build and simulate a single test, placing outputs in run_dir.
 
     threads: passed as --threads to Verilator (single-test mode).
@@ -188,7 +188,7 @@ def run_test(testname, run_dir, trace, threads=1, log=None):
         '-Wno-TIMESCALEMOD',
     ] + (['--trace'] if trace else []) + (
         ['--threads', str(threads)] if threads > 1 else []
-    ) + [
+    ) + (extra_verilator_args or []) + [
         '--top-module', testname,
         '--Mdir',       work_dir,
     ] + [f'-I{d}' for d in include_dirs] + [
@@ -223,7 +223,7 @@ def run_test(testname, run_dir, trace, threads=1, log=None):
 if not is_regress:
     run_dir = os.path.join(repo_root, 'rundir', args.name)
     try:
-        run_test(args.name, run_dir, args.trace, threads=jobs)
+        run_test(args.name, run_dir, args.trace, threads=jobs, extra_verilator_args=extra_verilator_args)
     except RuntimeError as e:
         sys.exit(f"ERROR: {e}")
 
@@ -271,7 +271,7 @@ else:
                 print(f"  START  {testname}")
             try:
                 with open(log_path, 'w') as log:
-                    run_test(testname, run_dir, args.trace, log=log)
+                    run_test(testname, run_dir, args.trace, log=log, extra_verilator_args=extra_verilator_args)
                 with print_lock:
                     print(f"  PASS   {testname}")
                 return (testname, 'PASS')
@@ -284,7 +284,7 @@ else:
             print(f"Running: {testname}")
             print('='*60)
             try:
-                run_test(testname, run_dir, args.trace)
+                run_test(testname, run_dir, args.trace, extra_verilator_args=extra_verilator_args)
                 return (testname, 'PASS')
             except RuntimeError as e:
                 print(f"\nERROR: {e}")
