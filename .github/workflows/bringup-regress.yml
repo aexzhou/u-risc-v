@@ -8,6 +8,9 @@ on:
 jobs:
   regress-cpu-bringup:
     runs-on: ubuntu-latest
+    env:
+      VERILATOR_CHANNEL: stable
+      VERILATOR_INSTALL_DIR: ${{ github.workspace }}/.cache/verilator/stable
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,22 +23,54 @@ jobs:
             libgoogle-perftools-dev numactl perl-doc \
             libfl-dev libfl2 zlib1g zlib1g-dev
 
-      - name: Build and install Verilator
+      - name: Resolve Verilator stable SHA
+        id: verilator-stable
+        shell: bash
+        run: |
+          sha="$(git ls-remote https://github.com/verilator/verilator refs/heads/${VERILATOR_CHANNEL} | awk '{print $1}')"
+          test -n "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Verilator cache
+        id: verilator-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VERILATOR_INSTALL_DIR }}
+          key: verilator-${{ runner.os }}-${{ env.VERILATOR_CHANNEL }}-${{ steps.verilator-stable.outputs.sha }}
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ env.VERILATOR_CHANNEL }}-${{ steps.verilator-stable.outputs.sha }}-${{ hashFiles('.github/workflows/bringup-regress.yml') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ env.VERILATOR_CHANNEL }}-
+
+      - name: Build and install Verilator (cache miss)
+        if: steps.verilator-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           unset VERILATOR_ROOT || true
-          git clone https://github.com/verilator/verilator /tmp/verilator-src
+          test -f /usr/include/FlexLexer.h || (echo "Missing /usr/include/FlexLexer.h" && exit 1)
+          git clone --depth 1 --branch "${VERILATOR_CHANNEL}" https://github.com/verilator/verilator /tmp/verilator-src
           cd /tmp/verilator-src
-          git pull
           autoconf
-          ./configure
+          export CC="ccache gcc"
+          export CXX="ccache g++"
+          ./configure --prefix="${VERILATOR_INSTALL_DIR}"
           make -j $(nproc)
-          sudo make install
+          make install
+
+      - name: Show Verilator version
+        shell: bash
+        run: |
+          export PATH="${VERILATOR_INSTALL_DIR}/bin:${PATH}"
           verilator --version
 
       - name: Run bringup regression
         shell: bash
         run: |
+          export PATH="${VERILATOR_INSTALL_DIR}/bin:${PATH}"
           source env.sh
           run regress_cpu_bringup -j 2
 
