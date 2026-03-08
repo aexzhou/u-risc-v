@@ -28,6 +28,8 @@ class test_cpu_bringup_shift extends test_cpu_bringup_base;
         imem[2] = 32'b00000000001000001101000100010011; // srli x2, x1, 2 (x2 is 0x3 here)
         imem[3] = 32'b11111101011000000000000110010011; // addi x3, x0, -42
         imem[4] = 32'b01000000001000011101001000010011; // srai x4, x3, 2 (should be sign extended)
+        imem[5] = 32'b00000000001000001001001010110011; // sll  x5, x1, x2  (x5 = 0xc << 3 = 0x60)
+        imem[6] = 32'b00000000001000001101001100110011; // srl  x6, x1, x2  (x6 = 0xc >> 3 = 0x1)
     endfunction
 
     virtual task run();
@@ -38,11 +40,17 @@ class test_cpu_bringup_shift extends test_cpu_bringup_base;
         `ASSERT_EQ(`U_REGFILE_PATH.X[1], 64'hc)
         `ASSERT_EQ(`U_REGFILE_PATH.X[2], 64'h3)
         `ASSERT_EQ(`U_REGFILE_PATH.X[4], 64'hFFFFFFFFFFFFFFF5)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[5], 64'h60)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[6], 64'h1)
     endtask
 
     virtual task report();
-        $display("[%s] X1=0x%0h",
+        $display("[%s] X1=0x%0h X2=0x%0h X4=0x%0h X5=0x%0h X6=0x%0h",
                  testname,
-                 `U_REGFILE_PATH.X[1]);
+                 `U_REGFILE_PATH.X[1],
+                 `U_REGFILE_PATH.X[2],
+                 `U_REGFILE_PATH.X[4],
+                 `U_REGFILE_PATH.X[5],
+                 `U_REGFILE_PATH.X[6]);
     endtask
 endclass
