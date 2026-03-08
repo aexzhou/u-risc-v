@@ -28,6 +28,12 @@ module rv_alu_ctrl(control, alu_op, opout);
         else if (alu_op == 2'b10 && control[3] == 1 && funct3 == 3'b000)    opout = ALU_SUB; // sub
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b111)    opout = ALU_AND; // and
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b110)    opout = ALU_OR;  // or
+        else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b001)    opout = ALU_SLL; // sll
+        else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b101)    opout = ALU_SRL; // srl
+        else if (alu_op == 2'b10 && control[3] == 1 && funct3 == 3'b101)    opout = ALU_SRA; // sra
+        else if (alu_op == 2'b00 && funct3 == 3'b001)                       opout = ALU_SLL; // slli
+        else if (alu_op == 2'b00 && funct3 == 3'b101 && control[3] == 0)    opout = ALU_SRL; // srli
+        else if (alu_op == 2'b00 && funct3 == 3'b101 && control[3] == 1)    opout = ALU_SRA; // srai
         else if (alu_op == 2'b00 && funct3 == 3'b000)                       opout = ALU_ADD; // addi
         else if (alu_op == 2'b00 && funct3 == 3'b111)                       opout = ALU_AND; // andi
         else if (alu_op == 2'b00 && funct3 == 3'b110)                       opout = ALU_OR;  // ori

@@ -14,7 +14,6 @@ ${CPU_DIR}/components/rv_alu.sv
 ${CPU_DIR}/components/rv_fwdu.sv
 ${CPU_DIR}/components/rv_hdu.sv
 ${CPU_DIR}/components/rv_immgen.sv
-${CPU_DIR}/components/rv_shifter.sv
 
 // Registers
 ${CPU_DIR}/reg/rv_regfile.sv

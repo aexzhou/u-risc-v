@@ -23,6 +23,9 @@ always_comb begin
         ALU_AND: out = in1 & in2;
         ALU_OR:  out = in1 | in2;
         ALU_ADD: out = in1 + in2;
+        ALU_SLL: out = in1 << in2[5:0];
+        ALU_SRL: out = in1 >> in2[5:0];
+        ALU_SRA: out = $signed(in1) >>> in2[5:0];
         ALU_SUB: out = in1 - in2;
         ALU_SLT: out = {{DW-1{1'b0}}, (in1 < in2)};  // SLT
         ALU_NOR: out = ~(in1 | in2);                 // NOR
