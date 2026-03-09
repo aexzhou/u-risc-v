@@ -41,6 +41,13 @@ logic          hazard_flag, equal_flag;
 logic [DW-1:0] regout1, regout2;
 logic [DW-1:0] id_rs1_val, id_rs2_val;
 
+logic [`RV32I_RD_WIDTH-1:0]     ifid_rd;
+logic [`RV32I_RS1_WIDTH-1:0]    ifid_rs1;
+logic [`RV32I_RS2_WIDTH-1:0]    ifid_rs2;
+logic [`RV32I_FUNCT3_WIDTH-1:0] ifid_funct3;
+logic [`RV32I_OPCODE_WIDTH-1:0] ifid_opcode;
+logic                           ifid_invert_op;
+
 // Control outputs
 logic [1:0]    alu_op;
 logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
@@ -54,8 +61,16 @@ rv_immgen #(.DW(DW)) u_immgen (
     .imm_out (imm)
 );
 
+assign ifid_funct3 = ifid_i[(`RV32I_FUNCT3_WIDTH + `RV32I_FUNCT3_LSB_POS - 1) : `RV32I_FUNCT3_LSB_POS];
+assign ifid_opcode = ifid_i[(`RV32I_OPCODE_WIDTH + `RV32I_OPCODE_LSB_POS - 1) : `RV32I_OPCODE_LSB_POS];
+assign ifid_rd  = ifid_i[(`RV32I_RD_WIDTH + `RV32I_RD_LSB_POS - 1) : `RV32I_RD_LSB_POS];
+assign ifid_rs1 = ifid_i[(`RV32I_RS1_WIDTH + `RV32I_RS1_LSB_POS - 1) : `RV32I_RS1_LSB_POS];
+assign ifid_rs2 = ifid_i[(`RV32I_RS2_WIDTH + `RV32I_RS2_LSB_POS - 1) : `RV32I_RS2_LSB_POS];
+assign ifid_invert_op = ifid_i[`RV32I_R_INVERT_OP_BIT_POS];
+
+
 rv_datapath_ctrl u_datapath_ctrl (
-    .opcode     (ifid_i[6:0]),
+    .opcode     (ifid_opcode),
     .equal_flag (equal_flag),
     .alu_op     (alu_op),
     .branch     (branch),
@@ -68,8 +83,8 @@ rv_datapath_ctrl u_datapath_ctrl (
 );
 
 rv_regfile u_regfile (
-    .rs1        (ifid_i[19:15]),
-    .rs2        (ifid_i[24:20]),
+    .rs1        (ifid_rs1),
+    .rs2        (ifid_rs2),
     .writeR     (mwb_rd),
     .write_data (write_data),
     .write      (mwb_regwrite),
@@ -83,15 +98,15 @@ logic mwb_regwrite_non_x0;
 logic forward_mwb_to_rs1, forward_mwb_to_rs2;
 
 assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
-assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
-assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
+assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_rs1);
+assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_rs2);
 
 assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
 assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
 
 rv_hdu u_hdu (
-    .ifid_rs1    (ifid_i[19:15]),
-    .ifid_rs2    (ifid_i[24:20]),
+    .ifid_rs1    (ifid_rs1),
+    .ifid_rs2    (ifid_rs2),
     .idex_rd     (idex_rd),
     .mem_read    (idex_memread),
     .pc_write    (pc_write),
@@ -115,12 +130,12 @@ always_ff @(posedge clk or negedge rst_n) begin
         {idex_regwrite, idex_memtoreg, idex_branch,
          idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
     end else begin
-        idex_rs1        <= ifid_i[19:15];
-        idex_rs2        <= ifid_i[24:20];
-        idex_rd         <= ifid_i[11:7];
+        idex_rs1        <= ifid_rs1;
+        idex_rs2        <= ifid_rs2;
+        idex_rd         <= ifid_rd;
         idex_a          <= id_rs1_val;
         idex_b          <= id_rs2_val;
-        idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
+        idex_alucontrol <= {ifid_invert_op, ifid_funct3};
         idex_imm        <= imm;
 
         // Insert bubble (NOP) on load-use hazard
