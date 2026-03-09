@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""assemble.py — Assemble a RISC-V .s/.asm file to a Verilog hex file loadable
+by $readmemh.
+
+Toolchain required:
+    sudo apt install binutils-riscv64-unknown-elf
+
+Usage:
+    scripts/assemble <input.s>
+    scripts/assemble <input.s> --out <output.hex>
+
+The .text section is extracted and written to the output .hex file in
+Verilog $readmemh format. If .data or .bss sections are non-empty a
+warning is printed; those sections must be loaded into dmem separately
+by the testbench (e.g. by overriding set_dmem() in the test class).
+"""
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+# ---------------------------------------------------------------------------
+# Toolchain
+# ---------------------------------------------------------------------------
+PREFIX  = 'riscv64-unknown-elf'
+AS      = f'{PREFIX}-as'
+LD      = f'{PREFIX}-ld'
+OBJCOPY = f'{PREFIX}-objcopy'
+OBJDUMP = f'{PREFIX}-objdump'
+
+
+def check_toolchain():
+    missing = []
+    for tool in [AS, LD, OBJCOPY, OBJDUMP]:
+        r = subprocess.run(['which', tool], capture_output=True)
+        if r.returncode != 0:
+            missing.append(tool)
+    if missing:
+        sys.exit(
+            f"ERROR: toolchain binaries not found: {', '.join(missing)}\n"
+            f"Install with:  sudo apt install binutils-riscv64-unknown-elf"
+        )
+
+
+def run_tool(cmd):
+    """Run a subprocess; exit with an error message on failure."""
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"ERROR: command failed:\n  {' '.join(cmd)}", file=sys.stderr)
+        if r.stderr.strip():
+            print(r.stderr.strip(), file=sys.stderr)
+        if r.stdout.strip():
+            print(r.stdout.strip(), file=sys.stderr)
+        sys.exit(1)
+    return r
+
+
+# ---------------------------------------------------------------------------
+# Section info
+# ---------------------------------------------------------------------------
+def get_section_sizes(elf_path):
+    """Return dict {section_name: size_bytes} from objdump -h output."""
+    r = subprocess.run([OBJDUMP, '-h', elf_path], capture_output=True, text=True)
+    sizes = {}
+    # Lines look like:   0 .text   000000a4  00000000  00000000  00001000  2**2
+    for line in r.stdout.splitlines():
+        m = re.match(r'\s+\d+\s+(\S+)\s+([0-9a-f]+)', line)
+        if m:
+            name = m.group(1)
+            size = int(m.group(2), 16)
+            sizes[name] = size
+    return sizes
+
+
+# ---------------------------------------------------------------------------
+# Parse args
+# ---------------------------------------------------------------------------
+parser = argparse.ArgumentParser(
+    description='Assemble a RISC-V .s/.asm file to a Verilog $readmemh hex file.'
+)
+parser.add_argument('input', help='Input .s/.asm source file')
+parser.add_argument(
+    '--out', metavar='FILE',
+    help='Output .hex file (default: same directory and stem as input)'
+)
+args = parser.parse_args()
+
+input_asm = os.path.abspath(args.input)
+if not os.path.isfile(input_asm):
+    sys.exit(f"ERROR: input file not found: {input_asm}")
+
+stem    = os.path.splitext(input_asm)[0]
+out_hex = os.path.abspath(args.out) if args.out else stem + '.hex'
+
+check_toolchain()
+
+# ---------------------------------------------------------------------------
+# Assemble -> link -> extract .text hex
+# ---------------------------------------------------------------------------
+with tempfile.TemporaryDirectory(prefix='uriscv_asm_') as tmpdir:
+    obj_file = os.path.join(tmpdir, 'prog.o')
+    elf_file = os.path.join(tmpdir, 'prog.elf')
+
+    # 1. Assemble
+    print(f"[as]      {os.path.relpath(input_asm)} -> prog.o")
+    run_tool([
+        AS,
+        '-march=rv32i', '-mabi=ilp32',
+        input_asm, '-o', obj_file,
+    ])
+
+    # 2. Link — place .text at 0x0; let ld place other sections after it
+    print(f"[ld]      prog.o -> prog.elf")
+    run_tool([
+        LD,
+        '-m', 'elf32lriscv',
+        '-Ttext=0x00000000',
+        obj_file, '-o', elf_file,
+    ])
+
+    # 3. Report section sizes; warn if data/bss are non-empty
+    sizes = get_section_sizes(elf_file)
+    text_size = sizes.get('.text', 0)
+    print(f"[info]    .text = {text_size} bytes  ({text_size // 4} words)")
+    for sec in ['.data', '.rodata', '.bss']:
+        sz = sizes.get(sec, 0)
+        if sz > 0:
+            print(
+                f"WARNING: '{sec}' section is {sz} bytes and will NOT be "
+                f"loaded into dmem automatically.\n"
+                f"         Override set_dmem() in your test class to populate "
+                f"dmem from a separate hex or by hand.",
+                file=sys.stderr,
+            )
+
+    # 4. Extract .text as raw binary, then convert to 32-bit word hex.
+    #
+    # objcopy -O verilog writes one BYTE per token (e.g. "13 06 70 01 ...").
+    # $readmemh for a 32-bit memory expects one 32-bit WORD per token.
+    # We therefore read the raw binary and emit big-endian 32-bit words
+    # (i.e. byte-swapped from little-endian RISC-V) so that imem[0] =
+    # the first instruction, imem[1] = the second, etc.
+    raw_file = os.path.join(tmpdir, 'prog.bin')
+    print(f"[objcopy] prog.elf -> {os.path.relpath(out_hex)}")
+    run_tool([
+        OBJCOPY,
+        '-O', 'binary',
+        '-j', '.text',
+        elf_file, raw_file,
+    ])
+
+    with open(raw_file, 'rb') as f:
+        raw = f.read()
+
+    # Pad to a multiple of 4 bytes (should already be aligned, but be safe)
+    if len(raw) % 4:
+        raw += b'\x00' * (4 - len(raw) % 4)
+
+    with open(out_hex, 'w') as f:
+        f.write('@00000000\n')
+        for i in range(0, len(raw), 4):
+            # Little-endian bytes -> 32-bit instruction word
+            word = int.from_bytes(raw[i:i+4], 'little')
+            f.write(f'{word:08x}\n')
+
+print(f"\nDone: {out_hex}")
+print(f"Load in testbench with:  $readmemh(\"{os.path.relpath(out_hex)}\", imem);")

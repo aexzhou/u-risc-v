@@ -129,6 +129,17 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
     work_dir = os.path.join(run_dir, 'work' + ('_trace' if trace else ''))
     os.makedirs(work_dir, exist_ok=True)
 
+    # Auto-assemble: if a same-named .s file sits next to the .svh, assemble it
+    # and place the .hex in run_dir so the test can reference it by name only.
+    asm_file = os.path.join(os.path.dirname(tb_file), f'{testname}.s')
+    if os.path.isfile(asm_file):
+        hex_out = os.path.join(run_dir, f'{testname}.hex')
+        emit(f"assemble  : {os.path.relpath(asm_file)} → {os.path.relpath(hex_out)}")
+        assemble_script = os.path.join(script_dir, 'assemble')
+        result = run_cmd([sys.executable, assemble_script, asm_file, '--out', hex_out])
+        if result.returncode != 0:
+            raise RuntimeError(f"Assembly failed for {asm_file}")
+
     # Generate wrapper (svh) or use file directly (sv)
     if test_style == 'svh':
         tests_dir   = os.path.dirname(tb_file)
