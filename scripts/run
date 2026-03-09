@@ -196,7 +196,7 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
     compile_cmd = [
         'verilator',
         '--binary', '--sv', '-Wall', '--timing',
-        '-Wno-TIMESCALEMOD',
+        '-Wno-TIMESCALEMOD', '-Wno-UNUSEDSIGNAL', '-Wno-fatal',
     ] + (['--trace'] if trace else []) + (
         ['--threads', str(threads)] if threads > 1 else []
     ) + (extra_verilator_args or []) + [

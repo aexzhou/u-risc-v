@@ -7,17 +7,20 @@ module rv_memu #(
 
     // EX/MEM pipeline register inputs (from EXU)
     input  logic [DW-1:0]  exm_aluout,
+    input  logic [DW-1:0]  exm_pc_plus_shimm,
     input  logic [DW-1:0]  exm_muxb,
     input  logic [4:0]     exm_rd,
     input  logic           exm_regwrite,
     input  logic           exm_memtoreg,
     input  logic           exm_branch,
+    input  logic           exm_branch_negate,
     input  logic           exm_memread,
     input  logic           exm_memwrite,
     input  logic           exm_zflag,
 
     // To IFU (branch control)
     output logic           pc_src,
+    output logic [DW-1:0]  pc_branch_target,
 
     // MEM/WB pipeline register outputs (to WBU and IDU/EXU)
     output logic [DW-1:0]  mwb_dout,
@@ -27,7 +30,8 @@ module rv_memu #(
     output logic           mwb_memtoreg
 );
 
-assign pc_src = exm_branch & exm_zflag;
+assign pc_src = exm_branch & (exm_zflag ^ exm_branch_negate);
+assign pc_branch_target = exm_pc_plus_shimm;
 
 mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (
     .clk        (clk),

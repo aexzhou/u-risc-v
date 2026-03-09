@@ -1,5 +1,5 @@
 /*
-* Branch bringup test: beq (not taken), bne (taken).
+* Branch bringup test: beq (taken), bne (taken).
 * Copyright (C) 2026 Ryan Liu
 *
 * This program is free software: you can redistribute it and/or modify
@@ -24,33 +24,34 @@ class test_cpu_bringup_branch extends test_cpu_bringup_base;
     endfunction
 
     virtual function void set_imem();
-        imem[0]  = 32'b00000000010100000000000010010011; // addi x1, x0, 5
-        imem[1]  = 32'b00000000011000000000000100010011; // addi x2, x0, 6
-        imem[2]  = 32'b00000010000100000000111001100011; // beq  x0, x1, +60 (not taken)
-        imem[3]  = 32'b00000000001000001000001000110011; // add  x4, x1, x2
-        imem[4]  = 32'b00000010001000001001111001100011; // bne  x1, x2, +60 (taken → imem[19])
-        imem[5]  = 32'b00000000010100000000000010010011; // flushed
-        imem[6]  = 32'b00000000011000000000000100010011; // flushed
-        imem[7]  = 32'b00000000001000001000001000110011; // flushed
-        imem[19] = 32'b00000000100000000000000010010011; // addi x1, x0, 8
-        imem[20] = 32'b00000000100100000000000100010011; // addi x2, x0, 9
+        imem[0] = 32'b00000000100000000000000010010011; // addi x1, x0, 8
+        imem[1] = 32'b00000000100000000000000100010011; // addi x2, x0, 8
+        imem[2] = 32'b00000000001000001000010001100011; // beq  x1, x2, +8 (taken)
+        imem[3] = 32'b00000000000100000000001000010011; // addi x4, x0, 1  (skipped)
+        imem[4] = 32'b00000000101100000000001000010011; // addi x4, x0, 11
+        imem[5] = 32'b00000000010100000000001010010011; // addi x5, x0, 5
+        imem[6] = 32'b00000000010000001001010001100011; // bne  x1, x4, +8 (taken)
+        imem[7] = 32'b00000000000100000000001010010011; // addi x5, x0, 1  (skipped)
+        imem[8] = 32'b00000001110000000000001010010011; // addi x5, x0, 28
     endfunction
 
     virtual task run();
-        wait_cycles(45);
+        wait_cycles(60);
     endtask
 
     virtual task check();
         `ASSERT_EQ(`U_REGFILE_PATH.X[1], 64'h8)
-        `ASSERT_EQ(`U_REGFILE_PATH.X[2], 64'h9)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[2], 64'h8)
         `ASSERT_EQ(`U_REGFILE_PATH.X[4], 64'hb)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[5], 64'h1c)
     endtask
 
     virtual task report();
-        $display("[%s] X1=0x%0h X2=0x%0h X4=0x%0h",
+        $display("[%s] X1=0x%0h X2=0x%0h X4=0x%0h X5=0x%0h",
                  testname,
                  `U_REGFILE_PATH.X[1],
                  `U_REGFILE_PATH.X[2],
-                 `U_REGFILE_PATH.X[4]);
+                 `U_REGFILE_PATH.X[4],
+                 `U_REGFILE_PATH.X[5]);
     endtask
 endclass

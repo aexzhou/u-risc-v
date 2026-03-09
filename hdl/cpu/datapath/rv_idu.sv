@@ -13,14 +13,14 @@ module rv_idu #(
     input  logic [4:0]     mwb_rd,
     input  logic           mwb_regwrite,
 
-    // To IFU (control feedback)
-    output logic [DW-1:0]  pc_plus_shimm,
+    // To IFU/EXU (control feedback and branch target pipeline)
     output logic           pc_write,
     output logic           ifid_write,
     output logic           if_flush,
 
     // ID/EX pipeline register outputs (to EXU)
     output logic [DW-1:0]  idex_imm,
+    output logic [DW-1:0]  idex_pc_plus_shimm,
     output logic [DW-1:0]  idex_a,
     output logic [DW-1:0]  idex_b,
     output logic [4:0]     idex_rs1,
@@ -29,6 +29,7 @@ module rv_idu #(
     output logic           idex_regwrite,
     output logic           idex_memtoreg,
     output logic           idex_branch,
+    output logic           idex_branch_negate,
     output logic           idex_memread,
     output logic           idex_memwrite,
     output logic           idex_alusrc,
@@ -36,14 +37,14 @@ module rv_idu #(
     output logic [3:0]     idex_alucontrol
 );
 
-logic [DW-1:0] imm, sh_imm;
+logic [DW-1:0] imm, sh_imm, pc_plus_shimm;
 logic          hazard_flag, equal_flag;
 logic [DW-1:0] regout1, regout2;
 logic [DW-1:0] id_rs1_val, id_rs2_val;
 
 // Control outputs
 logic [1:0]    alu_op;
-logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
+logic          branch, branch_negate, memread, memtoreg, memwrite, alusrc, regwrite;
 
 // Branch target: immediate left-shifted by 1 + ifid_pc
 assign sh_imm        = {imm[DW-2:0], 1'b0};
@@ -56,9 +57,11 @@ rv_immgen #(.DW(DW)) u_immgen (
 
 rv_datapath_ctrl u_datapath_ctrl (
     .opcode     (ifid_i[6:0]),
+    .funct3     (ifid_i[14:12]),
     .equal_flag (equal_flag),
     .alu_op     (alu_op),
     .branch     (branch),
+    .branch_negate (branch_negate),
     .memread    (memread),
     .memtoreg   (memtoreg),
     .memwrite   (memwrite),
@@ -112,6 +115,8 @@ always_ff @(posedge clk or negedge rst_n) begin
         idex_b          <= '0;
         idex_alucontrol <= '0;
         idex_imm        <= '0;
+        idex_pc_plus_shimm <= '0;
+        idex_branch_negate <= '0;
         {idex_regwrite, idex_memtoreg, idex_branch,
          idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
     end else begin
@@ -122,15 +127,19 @@ always_ff @(posedge clk or negedge rst_n) begin
         idex_b          <= id_rs2_val;
         idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
         idex_imm        <= imm;
+        idex_pc_plus_shimm <= pc_plus_shimm;
 
         // Insert bubble (NOP) on load-use hazard
-        if (hazard_flag)
+        if (hazard_flag) begin
+            idex_branch_negate <= '0;
             {idex_regwrite, idex_memtoreg, idex_branch,
              idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
-        else
+        end else begin
+            idex_branch_negate <= branch_negate;
             {idex_regwrite, idex_memtoreg, idex_branch,
              idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
                 <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};
+        end
     end
 end
 

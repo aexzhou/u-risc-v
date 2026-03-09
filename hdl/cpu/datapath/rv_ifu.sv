@@ -11,8 +11,8 @@ module rv_ifu #(
     input  logic           ifid_write,
     input  logic           if_flush,
 
-    // Branch target (from ID stage)
-    input  logic [DW-1:0]  pc_plus_shimm,
+    // Branch target (latched with branch instruction)
+    input  logic [DW-1:0]  pc_branch_target,
 
     // Outputs to ID stage
     output logic [DW-1:0]  ifid_pc,
@@ -27,7 +27,7 @@ logic [DW-1:0] pc_out, pc_incremented, pc_in;
 always_comb pc_incremented = pc_out + DW'(4);
 
 // pc_src = 1 -> take branch target; 0 -> PC+4
-assign pc_in = pc_src ? pc_plus_shimm : pc_incremented;
+assign pc_in = pc_src ? pc_branch_target : pc_incremented;
 
 // PC register: resetable, write-enabled by pc_write
 dffr #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
