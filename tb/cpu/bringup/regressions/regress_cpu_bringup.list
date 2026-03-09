@@ -2,3 +2,4 @@ test_cpu_bringup_arithmetic
 test_cpu_bringup_branch
 test_cpu_bringup_mem_hazard
 test_cpu_bringup_memory
+test_cpu_bringup_shift
