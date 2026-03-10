@@ -29,7 +29,7 @@ module rv_idu #(
     output logic           idex_regwrite,
     output logic           idex_memtoreg,
     output logic           idex_branch,
-    output logic           idex_branch_negate,
+    output logic           idex_branch_taken,
     output logic           idex_memread,
     output logic           idex_memwrite,
     output logic           idex_alusrc,
@@ -38,13 +38,13 @@ module rv_idu #(
 );
 
 logic [DW-1:0] imm, sh_imm, pc_plus_shimm;
-logic          hazard_flag, equal_flag;
+logic          hazard_flag, equal_flag, less_flag, greater_eq_flag, less_u_flag, greater_eq_u_flag;
 logic [DW-1:0] regout1, regout2;
 logic [DW-1:0] id_rs1_val, id_rs2_val;
 
 // Control outputs
 logic [1:0]    alu_op;
-logic          branch, branch_negate, memread, memtoreg, memwrite, alusrc, regwrite;
+logic          branch, branch_taken, memread, memtoreg, memwrite, alusrc, regwrite;
 
 // Branch target: immediate left-shifted by 1 + ifid_pc
 assign sh_imm        = {imm[DW-2:0], 1'b0};
@@ -56,18 +56,22 @@ rv_immgen #(.DW(DW)) u_immgen (
 );
 
 rv_datapath_ctrl u_datapath_ctrl (
-    .opcode     (ifid_i[6:0]),
-    .funct3     (ifid_i[14:12]),
-    .equal_flag (equal_flag),
-    .alu_op     (alu_op),
-    .branch     (branch),
-    .branch_negate (branch_negate),
-    .memread    (memread),
-    .memtoreg   (memtoreg),
-    .memwrite   (memwrite),
-    .alusrc     (alusrc),
-    .regwrite   (regwrite),
-    .if_flush   (if_flush)
+    .opcode             (ifid_i[6:0]),
+    .funct3             (ifid_i[14:12]),
+    .equal_flag         (equal_flag),
+    .less_flag          (less_flag),
+    .greater_eq_flag    (greater_eq_flag),
+    .less_u_flag        (less_u_flag),
+    .greater_eq_u_flag  (greater_eq_u_flag),
+    .alu_op             (alu_op),
+    .branch             (branch),
+    .branch_taken       (branch_taken),
+    .memread            (memread),
+    .memtoreg           (memtoreg),
+    .memwrite           (memwrite),
+    .alusrc             (alusrc),
+    .regwrite           (regwrite),
+    .if_flush           (if_flush)
 );
 
 rv_regfile u_regfile (
@@ -103,7 +107,11 @@ rv_hdu u_hdu (
 );
 
 // Early branch resolution: compare the two source registers (held in idex_a/b)
-assign equal_flag = (id_rs1_val == id_rs2_val);
+assign equal_flag        = (id_rs1_val == id_rs2_val);
+assign less_flag         = ($signed(id_rs1_val) < $signed(id_rs2_val));
+assign greater_eq_flag   = ($signed(id_rs1_val) >= $signed(id_rs2_val));
+assign less_u_flag       = id_rs1_val < id_rs2_val;
+assign greater_eq_u_flag = id_rs1_val >= id_rs2_val;
 
 // ID/EX pipeline registers
 always_ff @(posedge clk or negedge rst_n) begin
@@ -116,7 +124,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         idex_alucontrol <= '0;
         idex_imm        <= '0;
         idex_pc_plus_shimm <= '0;
-        idex_branch_negate <= '0;
+        idex_branch_taken <= '0;
         {idex_regwrite, idex_memtoreg, idex_branch,
          idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
     end else begin
@@ -131,11 +139,11 @@ always_ff @(posedge clk or negedge rst_n) begin
 
         // Insert bubble (NOP) on load-use hazard
         if (hazard_flag) begin
-            idex_branch_negate <= '0;
+            idex_branch_taken <= '0;
             {idex_regwrite, idex_memtoreg, idex_branch,
              idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
         end else begin
-            idex_branch_negate <= branch_negate;
+            idex_branch_taken <= branch_taken;
             {idex_regwrite, idex_memtoreg, idex_branch,
              idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
                 <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};

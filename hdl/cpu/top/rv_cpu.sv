@@ -28,7 +28,7 @@ logic          pc_write, pc_src, ifid_write, if_flush;
 // IDU -> EXU (ID/EX pipeline registers)
 logic [DW-1:0] idex_imm, idex_pc_plus_shimm, idex_a, idex_b;
 logic [4:0]    idex_rs1, idex_rs2, idex_rd;
-logic          idex_regwrite, idex_memtoreg, idex_branch, idex_branch_negate;
+logic          idex_regwrite, idex_memtoreg, idex_branch, idex_branch_taken;
 logic          idex_memread, idex_memwrite, idex_alusrc;
 logic [1:0]    idex_alu_op;
 logic [3:0]    idex_alucontrol;
@@ -36,7 +36,7 @@ logic [3:0]    idex_alucontrol;
 // EXU -> MEMU (EX/MEM pipeline registers)
 logic [DW-1:0] exm_aluout, exm_pc_plus_shimm, exm_muxb;
 logic [4:0]    exm_rd;
-logic          exm_regwrite, exm_memtoreg, exm_branch, exm_branch_negate;
+logic          exm_regwrite, exm_memtoreg, exm_branch, exm_branch_taken;
 logic          exm_memread, exm_memwrite, exm_zflag;
 
 // MEMU -> WBU (MEM/WB pipeline registers)
@@ -84,7 +84,7 @@ rv_idu #(.DW(DW)) u_idu (
     .idex_regwrite  (idex_regwrite),
     .idex_memtoreg  (idex_memtoreg),
     .idex_branch    (idex_branch),
-    .idex_branch_negate(idex_branch_negate),
+    .idex_branch_taken(idex_branch_taken),
     .idex_memread   (idex_memread),
     .idex_memwrite  (idex_memwrite),
     .idex_alusrc    (idex_alusrc),
@@ -105,7 +105,7 @@ rv_exu #(.DW(DW)) u_exu (
     .idex_regwrite  (idex_regwrite),
     .idex_memtoreg  (idex_memtoreg),
     .idex_branch    (idex_branch),
-    .idex_branch_negate(idex_branch_negate),
+    .idex_branch_taken(idex_branch_taken),
     .idex_memread   (idex_memread),
     .idex_memwrite  (idex_memwrite),
     .idex_alusrc    (idex_alusrc),
@@ -121,7 +121,7 @@ rv_exu #(.DW(DW)) u_exu (
     .exm_regwrite   (exm_regwrite),
     .exm_memtoreg   (exm_memtoreg),
     .exm_branch     (exm_branch),
-    .exm_branch_negate(exm_branch_negate),
+    .exm_branch_taken(exm_branch_taken),
     .exm_memread    (exm_memread),
     .exm_memwrite   (exm_memwrite),
     .exm_zflag      (exm_zflag)
@@ -137,7 +137,7 @@ rv_memu #(.DW(DW), .DMEM_DEPTH(DMEM_DEPTH)) u_memu (
     .exm_regwrite   (exm_regwrite),
     .exm_memtoreg   (exm_memtoreg),
     .exm_branch     (exm_branch),
-    .exm_branch_negate(exm_branch_negate),
+    .exm_branch_taken(exm_branch_taken),
     .exm_memread    (exm_memread),
     .exm_memwrite   (exm_memwrite),
     .exm_zflag      (exm_zflag),

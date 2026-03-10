@@ -13,7 +13,7 @@ module rv_memu #(
     input  logic           exm_regwrite,
     input  logic           exm_memtoreg,
     input  logic           exm_branch,
-    input  logic           exm_branch_negate,
+    input  logic           exm_branch_taken,
     input  logic           exm_memread,
     input  logic           exm_memwrite,
     input  logic           exm_zflag,
@@ -30,7 +30,7 @@ module rv_memu #(
     output logic           mwb_memtoreg
 );
 
-assign pc_src = exm_branch & (exm_zflag ^ exm_branch_negate);
+assign pc_src = exm_branch & exm_branch_taken;
 assign pc_branch_target = exm_pc_plus_shimm;
 
 mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (

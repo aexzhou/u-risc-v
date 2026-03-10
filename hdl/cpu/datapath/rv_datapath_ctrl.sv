@@ -2,9 +2,13 @@ module rv_datapath_ctrl (
     input  logic [6:0]    opcode,
     input  logic [2:0]    funct3,
     input  logic          equal_flag,
+    input  logic          less_flag,
+    input  logic          greater_eq_flag,
+    input  logic          less_u_flag,
+    input  logic          greater_eq_u_flag,
     output logic [1:0]    alu_op,
     output logic          branch,
-    output logic          branch_negate,
+    output logic          branch_taken,
     output logic          memread,
     output logic          memtoreg,
     output logic          memwrite,
@@ -24,8 +28,18 @@ always_comb begin
     endcase
 end
 
-// funct3[0] distinguishes BEQ (0) from BNE (1)
-assign branch_negate = funct3[0];
-assign if_flush = branch && (equal_flag ^ branch_negate);
+always_comb begin
+    case (funct3)
+        3'h0: branch_taken = equal_flag;        // beq
+        3'h1: branch_taken = ~equal_flag;       // bne
+        3'h4: branch_taken = less_flag;         // blt (signed)
+        3'h5: branch_taken = greater_eq_flag;   // bge
+        3'h6: branch_taken = less_u_flag;       // bltu
+        3'h7: branch_taken = greater_eq_u_flag; // bgeu
+        default: branch_taken = 1'b0;
+    endcase
+end
+
+assign if_flush = branch && branch_taken;
 
 endmodule

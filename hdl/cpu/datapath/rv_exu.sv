@@ -15,7 +15,7 @@ module rv_exu #(
     input  logic           idex_regwrite,
     input  logic           idex_memtoreg,
     input  logic           idex_branch,
-    input  logic           idex_branch_negate,
+    input  logic           idex_branch_taken,
     input  logic           idex_memread,
     input  logic           idex_memwrite,
     input  logic           idex_alusrc,
@@ -35,7 +35,7 @@ module rv_exu #(
     output logic           exm_regwrite,
     output logic           exm_memtoreg,
     output logic           exm_branch,
-    output logic           exm_branch_negate,
+    output logic           exm_branch_taken,
     output logic           exm_memread,
     output logic           exm_memwrite,
     output logic           exm_zflag
@@ -103,7 +103,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         exm_pc_plus_shimm <= '0;
         exm_muxb   <= '0;
         exm_rd     <= '0;
-        exm_branch_negate <= '0;
+        exm_branch_taken <= '0;
         {exm_regwrite, exm_memtoreg, exm_branch,
          exm_memread,  exm_memwrite} <= '0;
     end else begin
@@ -112,7 +112,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         exm_pc_plus_shimm <= idex_pc_plus_shimm;
         exm_muxb   <= idex_muxb;
         exm_rd     <= idex_rd;
-        exm_branch_negate <= idex_branch_negate;
+        exm_branch_taken <= idex_branch_taken;
         {exm_regwrite, exm_memtoreg, exm_branch,
          exm_memread,  exm_memwrite}
             <= {idex_regwrite, idex_memtoreg, idex_branch,
