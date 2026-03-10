@@ -21,7 +21,7 @@
 
 `define ASSERT_EQ(a, b) \
     if ((a) !== (b)) begin \
-        $display("ASSERT_EQ FAIL: %s = 0x%016h, %s = 0x%016h", `"a`", (a), `"b`", (b)); \
+        $display("\033[1;31mASSERT_EQ FAIL!!!: %s = 0x%016h, %s = 0x%016h\033[0m", `"a`", (a), `"b`", (b)); \
         pass = 0; \
     end
 
@@ -77,7 +77,7 @@ class test_cpu_bringup_base;
 
     virtual function void print_pass_fail();
         $display("\n====== Simulation Results ======\n");
-        $display("[%s]  %s", testname, pass ? "PASS" : "FAIL");
+        $display("[%s]  %s", testname, pass ? "\033[1;32mPASSED\033[0m" : "\033[1;31mFAILED!!!\033[0m");
         $display("\n");
     endfunction
 
