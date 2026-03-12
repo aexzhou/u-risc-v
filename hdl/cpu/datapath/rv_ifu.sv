@@ -58,7 +58,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         if (ifid_write)
             ifid_pc <= pc_out;
 
-        if (if_flush)
+        if (if_flush | pc_src)
             ifid_i <= 32'd0;        // insert NOP on branch taken
         else if (ifid_write)
             ifid_i <= imem_out;

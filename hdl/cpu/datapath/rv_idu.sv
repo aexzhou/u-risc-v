@@ -12,6 +12,7 @@ module rv_idu #(
     input  logic [DW-1:0]  write_data,
     input  logic [4:0]     mwb_rd,
     input  logic           mwb_regwrite,
+    input  logic           id_flush,
 
     // To IFU/EXU (control feedback and branch target pipeline)
     output logic           pc_write,
@@ -85,19 +86,8 @@ rv_regfile u_regfile (
     .data_out2  (regout2)
 );
 
-// logic mwb_regwrite_non_x0;
-// logic forward_mwb_to_rs1, forward_mwb_to_rs2;
-
-// assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
-// assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
-// assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
-
-// assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
-// assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
-
 assign id_rs1_val = regout1;
 assign id_rs2_val = regout2;
-
 
 rv_hdu u_hdu (
     .ifid_rs1    (ifid_i[19:15]),
@@ -124,25 +114,39 @@ always_ff @(posedge clk or negedge rst_n) begin
         {idex_regwrite, idex_memtoreg, idex_branch,
          idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
     end else begin
-        idex_rs1        <= ifid_i[19:15];
-        idex_rs2        <= ifid_i[24:20];
-        idex_rd         <= ifid_i[11:7];
-        idex_a          <= id_rs1_val;
-        idex_b          <= id_rs2_val;
-        idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
-        idex_imm        <= imm;
-        idex_pc_plus_shimm <= pc_plus_shimm;
-
-        // Insert bubble (NOP) on load-use hazard
-        if (hazard_flag) begin
+        if (id_flush) begin
+            idex_rs1        <= '0;
+            idex_rs2        <= '0;
+            idex_rd         <= '0;
+            idex_a          <= '0;
+            idex_b          <= '0;
+            idex_alucontrol <= '0;
+            idex_imm        <= '0;
+            idex_pc_plus_shimm <= '0;
             idex_branch_taken <= '0;
             {idex_regwrite, idex_memtoreg, idex_branch,
-             idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
+            idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
         end else begin
-            idex_branch_taken <= branch_taken;
-            {idex_regwrite, idex_memtoreg, idex_branch,
-             idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
-                <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};
+            idex_rs1        <= ifid_i[19:15];
+            idex_rs2        <= ifid_i[24:20];
+            idex_rd         <= ifid_i[11:7];
+            idex_a          <= id_rs1_val;
+            idex_b          <= id_rs2_val;
+            idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
+            idex_imm        <= imm;
+            idex_pc_plus_shimm <= pc_plus_shimm;
+
+            // Insert bubble (NOP) on load-use hazard
+            if (hazard_flag) begin
+                idex_branch_taken <= '0;
+                {idex_regwrite, idex_memtoreg, idex_branch,
+                idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
+            end else begin
+                idex_branch_taken <= branch_taken;
+                {idex_regwrite, idex_memtoreg, idex_branch,
+                idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
+                    <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};
+            end
         end
     end
 end

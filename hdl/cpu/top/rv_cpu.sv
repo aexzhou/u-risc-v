@@ -23,7 +23,7 @@ module rv_cpu #(
 logic [DW-1:0] ifid_pc;
 logic [31:0]   ifid_i;
 logic [DW-1:0] pc_branch_target;
-logic          pc_write, pc_src, ifid_write, if_flush;
+logic          pc_write, pc_src, ifid_write, if_flush, id_flush;
 
 // IDU -> EXU (ID/EX pipeline registers)
 logic [DW-1:0] idex_imm, idex_pc_plus_shimm, idex_a, idex_b;
@@ -63,6 +63,8 @@ rv_ifu #(.DW(DW), .IMEM_DEPTH(IMEM_DEPTH)) u_ifu (
     .ifid_i        (ifid_i)
 );
 
+assign id_flush = pc_src;
+
 rv_idu #(.DW(DW)) u_idu (
     .clk            (clk),
     .rst_n          (rst_n),
@@ -71,6 +73,7 @@ rv_idu #(.DW(DW)) u_idu (
     .write_data     (write_data),
     .mwb_rd         (mwb_rd),
     .mwb_regwrite   (mwb_regwrite),
+    .id_flush       (id_flush),
     .pc_write       (pc_write),
     .ifid_write     (ifid_write),
     .if_flush       (if_flush),
@@ -124,7 +127,9 @@ rv_exu #(.DW(DW)) u_exu (
     .exm_branch_taken(exm_branch_taken),
     .exm_memread    (exm_memread),
     .exm_memwrite   (exm_memwrite),
-    .exm_zflag      (exm_zflag)
+    .exm_zflag      (exm_zflag),
+        .pc_src         (pc_src),
+    .pc_branch_target(pc_branch_target)
 );
 
 rv_memu #(.DW(DW), .DMEM_DEPTH(DMEM_DEPTH)) u_memu (
@@ -141,8 +146,6 @@ rv_memu #(.DW(DW), .DMEM_DEPTH(DMEM_DEPTH)) u_memu (
     .exm_memread    (exm_memread),
     .exm_memwrite   (exm_memwrite),
     .exm_zflag      (exm_zflag),
-    .pc_src         (pc_src),
-    .pc_branch_target(pc_branch_target),
     .mwb_dout       (mwb_dout),
     .mwb_aluout     (mwb_aluout),
     .mwb_rd         (mwb_rd),

@@ -38,7 +38,10 @@ module rv_exu #(
     output logic           exm_branch_taken,
     output logic           exm_memread,
     output logic           exm_memwrite,
-    output logic           exm_zflag
+    output logic           exm_zflag,
+
+    output logic           pc_src,
+    output logic [DW-1:0]  pc_branch_target
 );
 
 logic [1:0]    forward_a, forward_b;
@@ -55,6 +58,9 @@ logic branch_taken;
 
 logic [2:0] funct3;
 assign funct3 = idex_alucontrol[2:0];
+
+assign pc_src = idex_branch & branch_taken;
+assign pc_branch_target = idex_pc_plus_shimm;
 
 // Forward MUX for Rs1
 always_comb begin
