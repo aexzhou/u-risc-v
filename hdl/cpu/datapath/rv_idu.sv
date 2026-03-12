@@ -56,7 +56,6 @@ rv_immgen #(.DW(DW)) u_immgen (
 
 rv_datapath_ctrl u_datapath_ctrl (
     .opcode   (ifid_i[6:0]),
-    .funct3   (ifid_i[14:12]),
     .alu_op   (alu_op),
     .branch   (branch),
     .memread  (memread),
