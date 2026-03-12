@@ -15,7 +15,6 @@ module rv_exu #(
     input  logic           idex_regwrite,
     input  logic           idex_memtoreg,
     input  logic           idex_branch,
-    input  logic           idex_branch_taken,
     input  logic           idex_memread,
     input  logic           idex_memwrite,
     input  logic           idex_alusrc,
@@ -29,16 +28,12 @@ module rv_exu #(
 
     // EX/MEM pipeline register outputs (to MEMU)
     output logic [DW-1:0]  exm_aluout,
-    output logic [DW-1:0]  exm_pc_plus_shimm,
     output logic [DW-1:0]  exm_muxb,
     output logic [4:0]     exm_rd,
     output logic           exm_regwrite,
     output logic           exm_memtoreg,
-    output logic           exm_branch,
-    output logic           exm_branch_taken,
     output logic           exm_memread,
     output logic           exm_memwrite,
-    output logic           exm_zflag,
 
     output logic           pc_src,
     output logic [DW-1:0]  pc_branch_target
@@ -48,7 +43,6 @@ logic [1:0]    forward_a, forward_b;
 logic [DW-1:0] alu_a, alu_b, idex_muxb;
 logic [3:0]    alu_ctrl;
 logic [DW-1:0] alu_out;
-logic          zflag;
 logic equal_flag;
 logic less_flag;
 logic greater_eq_flag;
@@ -96,7 +90,6 @@ rv_alu #(.DW(DW)) u_alu (
     .in2    (alu_b),
     .alu_op (alu_ctrl),
     .out    (alu_out),
-    .zflag  (zflag),
     .equal_flag  (equal_flag),
     .less_flag  (less_flag),
     .greater_eq_flag  (greater_eq_flag),
@@ -129,16 +122,12 @@ rv_fwdu u_fwdu (
 );
 
 // EX/MEM pipeline registers
-dffr #(.DW(1))  u_exm_zflag_r        (.clk(clk), .rst_n(rst_n), .din(zflag),            .dout(exm_zflag));
-dffr #(.DW(DW)) u_exm_aluout_r       (.clk(clk), .rst_n(rst_n), .din(alu_out),          .dout(exm_aluout));
-dffr #(.DW(DW)) u_exm_pc_plus_shimm_r(.clk(clk), .rst_n(rst_n), .din(idex_pc_plus_shimm),.dout(exm_pc_plus_shimm));
-dffr #(.DW(DW)) u_exm_muxb_r         (.clk(clk), .rst_n(rst_n), .din(idex_muxb),        .dout(exm_muxb));
-dffr #(.DW(5))  u_exm_rd_r           (.clk(clk), .rst_n(rst_n), .din(idex_rd),          .dout(exm_rd));
-dffr #(.DW(1))  u_exm_branch_taken_r (.clk(clk), .rst_n(rst_n), .din(branch_taken),     .dout(exm_branch_taken));
-dffr #(.DW(1))  u_exm_regwrite_r     (.clk(clk), .rst_n(rst_n), .din(idex_regwrite),    .dout(exm_regwrite));
-dffr #(.DW(1))  u_exm_memtoreg_r     (.clk(clk), .rst_n(rst_n), .din(idex_memtoreg),    .dout(exm_memtoreg));
-dffr #(.DW(1))  u_exm_branch_r       (.clk(clk), .rst_n(rst_n), .din(idex_branch),      .dout(exm_branch));
-dffr #(.DW(1))  u_exm_memread_r      (.clk(clk), .rst_n(rst_n), .din(idex_memread),     .dout(exm_memread));
-dffr #(.DW(1))  u_exm_memwrite_r     (.clk(clk), .rst_n(rst_n), .din(idex_memwrite),    .dout(exm_memwrite));
+dffr #(.DW(DW)) u_exm_aluout_r  (.clk(clk), .rst_n(rst_n), .din(alu_out),       .dout(exm_aluout));
+dffr #(.DW(DW)) u_exm_muxb_r    (.clk(clk), .rst_n(rst_n), .din(idex_muxb),     .dout(exm_muxb));
+dffr #(.DW(5))  u_exm_rd_r      (.clk(clk), .rst_n(rst_n), .din(idex_rd),       .dout(exm_rd));
+dffr #(.DW(1))  u_exm_regwrite_r(.clk(clk), .rst_n(rst_n), .din(idex_regwrite), .dout(exm_regwrite));
+dffr #(.DW(1))  u_exm_memtoreg_r(.clk(clk), .rst_n(rst_n), .din(idex_memtoreg), .dout(exm_memtoreg));
+dffr #(.DW(1))  u_exm_memread_r (.clk(clk), .rst_n(rst_n), .din(idex_memread),  .dout(exm_memread));
+dffr #(.DW(1))  u_exm_memwrite_r(.clk(clk), .rst_n(rst_n), .din(idex_memwrite), .dout(exm_memwrite));
 
 endmodule : rv_exu

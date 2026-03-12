@@ -14,10 +14,9 @@ module rv_idu #(
     input  logic           mwb_regwrite,
     input  logic           id_flush,
 
-    // To IFU/EXU (control feedback and branch target pipeline)
+    // To IFU/EXU (control feedback)
     output logic           pc_write,
     output logic           ifid_write,
-    output logic           if_flush,
 
     // ID/EX pipeline register outputs (to EXU)
     output logic [DW-1:0]  idex_imm,
@@ -30,7 +29,6 @@ module rv_idu #(
     output logic           idex_regwrite,
     output logic           idex_memtoreg,
     output logic           idex_branch,
-    output logic           idex_branch_taken,
     output logic           idex_memread,
     output logic           idex_memwrite,
     output logic           idex_alusrc,
@@ -45,7 +43,7 @@ logic [DW-1:0] id_rs1_val, id_rs2_val;
 
 // Control outputs
 logic [1:0]    alu_op;
-logic          branch, branch_taken, memread, memtoreg, memwrite, alusrc, regwrite;
+logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
 
 // Branch target: immediate left-shifted by 1 + ifid_pc
 assign sh_imm        = imm;
@@ -56,22 +54,16 @@ rv_immgen #(.DW(DW)) u_immgen (
     .imm_out (imm)
 );
 
-rv_datapath_ctrl #(
-    .DW(DW)
-) u_datapath_ctrl (
-    .opcode             (ifid_i[6:0]),
-    .funct3             (ifid_i[14:12]),
-    .id_rs1_val         (id_rs1_val),
-    .id_rs2_val         (id_rs2_val),
-    .alu_op             (alu_op),
-    .branch             (branch),
-    .branch_taken       (branch_taken),
-    .memread            (memread),
-    .memtoreg           (memtoreg),
-    .memwrite           (memwrite),
-    .alusrc             (alusrc),
-    .regwrite           (regwrite),
-    .if_flush           (if_flush)
+rv_datapath_ctrl u_datapath_ctrl (
+    .opcode   (ifid_i[6:0]),
+    .funct3   (ifid_i[14:12]),
+    .alu_op   (alu_op),
+    .branch   (branch),
+    .memread  (memread),
+    .memtoreg (memtoreg),
+    .memwrite (memwrite),
+    .alusrc   (alusrc),
+    .regwrite (regwrite)
 );
 
 rv_regfile u_regfile (
@@ -111,7 +103,6 @@ dffr_sync_flush #(.DW(DW)) u_idex_imm_r        (.clk(clk), .rst_n(rst_n), .flush
 dffr_sync_flush #(.DW(DW)) u_idex_pcs_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(pc_plus_shimm),               .dout(idex_pc_plus_shimm));
 
 // Control registers. These are also flushed on hazard_flag to insert NOP bubbles
-dffr_sync_flush #(.DW(1)) u_idex_branch_taken_r (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(branch_taken), .dout(idex_branch_taken));
 dffr_sync_flush #(.DW(1)) u_idex_regwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(regwrite),     .dout(idex_regwrite));
 dffr_sync_flush #(.DW(1)) u_idex_memtoreg_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memtoreg),     .dout(idex_memtoreg));
 dffr_sync_flush #(.DW(1)) u_idex_branch_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(branch),       .dout(idex_branch));
