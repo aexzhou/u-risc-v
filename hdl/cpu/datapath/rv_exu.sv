@@ -46,6 +46,15 @@ logic [DW-1:0] alu_a, alu_b, idex_muxb;
 logic [3:0]    alu_ctrl;
 logic [DW-1:0] alu_out;
 logic          zflag;
+logic equal_flag;
+logic less_flag;
+logic greater_eq_flag;
+logic unsigned_less_flag;
+logic unsigned_greater_eq_flag;
+logic branch_taken;
+
+logic [2:0] funct3;
+assign funct3 = idex_alucontrol[2:0];
 
 // Forward MUX for Rs1
 always_comb begin
@@ -81,8 +90,26 @@ rv_alu #(.DW(DW)) u_alu (
     .in2    (alu_b),
     .alu_op (alu_ctrl),
     .out    (alu_out),
-    .zflag  (zflag)
+    .zflag  (zflag),
+    .equal_flag  (equal_flag),
+    .less_flag  (less_flag),
+    .greater_eq_flag  (greater_eq_flag),
+    .unsigned_less_flag  (unsigned_less_flag),
+    .unsigned_greater_eq_flag  (unsigned_greater_eq_flag)
 );
+
+
+always_comb begin
+    case (funct3)
+        3'h0: branch_taken = equal_flag;        // beq
+        3'h1: branch_taken = ~equal_flag;       // bne
+        3'h4: branch_taken = less_flag;         // blt (signed)
+        3'h5: branch_taken = greater_eq_flag;   // bge
+        3'h6: branch_taken = unsigned_less_flag;       // bltu
+        3'h7: branch_taken = unsigned_greater_eq_flag; // bgeu
+        default: branch_taken = 1'b0;
+    endcase
+end
 
 rv_fwdu u_fwdu (
     .idex_rs1     (idex_rs1),
@@ -112,7 +139,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         exm_pc_plus_shimm <= idex_pc_plus_shimm;
         exm_muxb   <= idex_muxb;
         exm_rd     <= idex_rd;
-        exm_branch_taken <= idex_branch_taken;
+        exm_branch_taken <= branch_taken;
         {exm_regwrite, exm_memtoreg, exm_branch,
          exm_memread,  exm_memwrite}
             <= {idex_regwrite, idex_memtoreg, idex_branch,

@@ -24,15 +24,18 @@
 _start:
     addi x1, x0, 5         # x1 = 5
     addi x2, x0, 5         # x2 = 5  (x1 == x2 → beq taken)
-    beq  x1, x2, target    # x1 == x2 -> beq taken -> target (+16 bytes)
+    beq  x1, x2, target    # x1 == x2 -> beq taken -> target (+16 bytes), 2*4  = 8
 
     # Wrong-path: must NOT execute
     addi x3, x0, 1         # Should be flushed in IF
     addi x4, x0, 11        # Tests pc_src and if_flush
     addi x5, x0, 22        #
+    addi x6, x0, 6
+    addi x7, x0, 7
+    addi x8, x0, 8
 
 target:
-    addi x10, x0, 99       # branch target: x10 = 99 = 0x63
+    addi x10, x0, 99       # branch target: x10 = 99 = 0x63  9*4=36 = 24h  24h-8 = 1C
 
 _end:
     addi x0, x0, 0

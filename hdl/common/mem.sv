@@ -18,17 +18,14 @@ module mem #(
     // Word index: drop the byte-offset bits, keep only as many bits as needed
     logic [IDX_BITS-1:0] word_addr;
     assign word_addr = IDX_BITS'(address >> BYTE_SHIFT);
-
-    // Read data
-    always_ff @(posedge clk) begin
-        if (mem_read)
-            read_data <= memory[word_addr];
-    end
+    
+    assign read_data = mem_read ? memory[word_addr] : '0;
 
     // Write data
     always_ff @(posedge clk) begin
         if (mem_write)
             memory[word_addr] <= write_data;
     end
+
 
 endmodule

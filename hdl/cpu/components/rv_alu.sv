@@ -15,7 +15,12 @@ module rv_alu
     input  logic [DW-1:0] in2,
     input  alu_op_e        alu_op,
     output logic [DW-1:0] out,
-    output logic          zflag
+    output logic          zflag,
+    output logic equal_flag,
+    output logic less_flag,
+    output logic greater_eq_flag,
+    output logic unsigned_less_flag,
+    output logic unsigned_greater_eq_flag
 );
 
 always_comb begin
@@ -34,5 +39,11 @@ always_comb begin
 
     zflag = (out == '0);  // Zero flag
 end
+
+assign equal_flag        = (in1 == in2); // FIXME: HERE, in1 == in2 CHECK? IF THIS DOESNT FIRE THEN THIS WONT EVENTUALLY TRIGGER PC_SRC!!!
+assign less_flag         = ($signed(in1) < $signed(in2));
+assign greater_eq_flag   = ($signed(in1) >= $signed(in2));
+assign unsigned_less_flag       = in1 < in2;
+assign unsigned_greater_eq_flag = in1 >= in2;
 
 endmodule

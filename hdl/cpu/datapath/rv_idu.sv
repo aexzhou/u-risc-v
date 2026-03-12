@@ -38,7 +38,7 @@ module rv_idu #(
 );
 
 logic [DW-1:0] imm, sh_imm, pc_plus_shimm;
-logic          hazard_flag, equal_flag, less_flag, greater_eq_flag, less_u_flag, greater_eq_u_flag;
+logic          hazard_flag;
 logic [DW-1:0] regout1, regout2;
 logic [DW-1:0] id_rs1_val, id_rs2_val;
 
@@ -47,7 +47,7 @@ logic [1:0]    alu_op;
 logic          branch, branch_taken, memread, memtoreg, memwrite, alusrc, regwrite;
 
 // Branch target: immediate left-shifted by 1 + ifid_pc
-assign sh_imm        = {imm[DW-2:0], 1'b0};
+assign sh_imm        = imm;
 assign pc_plus_shimm = sh_imm + ifid_pc;
 
 rv_immgen #(.DW(DW)) u_immgen (
@@ -55,14 +55,13 @@ rv_immgen #(.DW(DW)) u_immgen (
     .imm_out (imm)
 );
 
-rv_datapath_ctrl u_datapath_ctrl (
+rv_datapath_ctrl #(
+    .DW(DW)
+) u_datapath_ctrl (
     .opcode             (ifid_i[6:0]),
     .funct3             (ifid_i[14:12]),
-    .equal_flag         (equal_flag),
-    .less_flag          (less_flag),
-    .greater_eq_flag    (greater_eq_flag),
-    .less_u_flag        (less_u_flag),
-    .greater_eq_u_flag  (greater_eq_u_flag),
+    .id_rs1_val         (id_rs1_val),
+    .id_rs2_val         (id_rs2_val),
     .alu_op             (alu_op),
     .branch             (branch),
     .branch_taken       (branch_taken),
@@ -86,15 +85,19 @@ rv_regfile u_regfile (
     .data_out2  (regout2)
 );
 
-logic mwb_regwrite_non_x0;
-logic forward_mwb_to_rs1, forward_mwb_to_rs2;
+// logic mwb_regwrite_non_x0;
+// logic forward_mwb_to_rs1, forward_mwb_to_rs2;
 
-assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
-assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
-assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
+// assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
+// assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
+// assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
 
-assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
-assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
+// assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
+// assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
+
+assign id_rs1_val = regout1;
+assign id_rs2_val = regout2;
+
 
 rv_hdu u_hdu (
     .ifid_rs1    (ifid_i[19:15]),
@@ -105,13 +108,6 @@ rv_hdu u_hdu (
     .ifid_write  (ifid_write),
     .hazard_flag (hazard_flag)
 );
-
-// Early branch resolution: compare the two source registers (held in idex_a/b)
-assign equal_flag        = (id_rs1_val == id_rs2_val);
-assign less_flag         = ($signed(id_rs1_val) < $signed(id_rs2_val));
-assign greater_eq_flag   = ($signed(id_rs1_val) >= $signed(id_rs2_val));
-assign less_u_flag       = id_rs1_val < id_rs2_val;
-assign greater_eq_u_flag = id_rs1_val >= id_rs2_val;
 
 // ID/EX pipeline registers
 always_ff @(posedge clk or negedge rst_n) begin
