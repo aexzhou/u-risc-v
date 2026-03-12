@@ -94,6 +94,7 @@ if not os.path.isfile(input_asm):
 
 stem    = os.path.splitext(input_asm)[0]
 out_hex = os.path.abspath(args.out) if args.out else stem + '.hex'
+out_dis = os.path.splitext(out_hex)[0] + '.dis'
 
 check_toolchain()
 
@@ -166,5 +167,34 @@ with tempfile.TemporaryDirectory(prefix='uriscv_asm_') as tmpdir:
             word = int.from_bytes(raw[i:i+4], 'little')
             f.write(f'{word:08x}\n')
 
+    # 5. Generate disassembly: machine-code word // asm instruction
+    print(f"[objdump] prog.elf -> {os.path.relpath(out_dis)}")
+    r = run_tool([
+        OBJDUMP,
+        '-d',
+        '-M', 'no-aliases',
+        '--no-show-raw-insn',
+        elf_file,
+    ])
+    # objdump -d lines look like:
+    #    0:	addi	a2,zero,7
+    #    4:	addi	a0,zero,5
+    # Build a map from word-index to instruction string, then emit alongside hex words.
+    addr_to_insn = {}
+    for line in r.stdout.splitlines():
+        m = re.match(r'\s+([0-9a-f]+):\s+(.*)', line)
+        if m:
+            addr = int(m.group(1), 16)
+            insn = ' '.join(m.group(2).split())  # normalise whitespace
+            addr_to_insn[addr] = insn
+
+    with open(out_dis, 'w') as f:
+        for i in range(0, len(raw), 4):
+            word = int.from_bytes(raw[i:i+4], 'little')
+            addr = i
+            insn = addr_to_insn.get(addr, '???')
+            f.write(f'{word:08x}  // {insn}\n')
+
 print(f"\nDone: {out_hex}")
+print(f"      {out_dis}")
 print(f"Load in testbench with:  $readmemh(\"{os.path.relpath(out_hex)}\", imem);")
