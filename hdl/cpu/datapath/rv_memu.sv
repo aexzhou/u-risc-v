@@ -36,18 +36,9 @@ mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (
 );
 
 // MEM/WB pipeline registers
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        mwb_aluout   <= '0;
-        mwb_rd       <= '0;
-        mwb_regwrite <= '0;
-        mwb_memtoreg <= '0;
-    end else begin
-        mwb_aluout   <= exm_aluout;
-        mwb_rd       <= exm_rd;
-        mwb_regwrite <= exm_regwrite;
-        mwb_memtoreg <= exm_memtoreg;
-    end
-end
+dffr #(.DW(DW)) u_mwb_aluout_r  (.clk(clk), .rst_n(rst_n), .din(exm_aluout),   .dout(mwb_aluout));
+dffr #(.DW(5))  u_mwb_rd_r      (.clk(clk), .rst_n(rst_n), .din(exm_rd),       .dout(mwb_rd));
+dffr #(.DW(1))  u_mwb_regwrite_r(.clk(clk), .rst_n(rst_n), .din(exm_regwrite), .dout(mwb_regwrite));
+dffr #(.DW(1))  u_mwb_memtoreg_r(.clk(clk), .rst_n(rst_n), .din(exm_memtoreg), .dout(mwb_memtoreg));
 
 endmodule : rv_memu

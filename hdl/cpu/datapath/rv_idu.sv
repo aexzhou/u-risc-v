@@ -100,55 +100,24 @@ rv_hdu u_hdu (
 );
 
 // ID/EX pipeline registers
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        idex_rs1        <= '0;
-        idex_rs2        <= '0;
-        idex_rd         <= '0;
-        idex_a          <= '0;
-        idex_b          <= '0;
-        idex_alucontrol <= '0;
-        idex_imm        <= '0;
-        idex_pc_plus_shimm <= '0;
-        idex_branch_taken <= '0;
-        {idex_regwrite, idex_memtoreg, idex_branch,
-         idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
-    end else begin
-        if (id_flush) begin
-            idex_rs1        <= '0;
-            idex_rs2        <= '0;
-            idex_rd         <= '0;
-            idex_a          <= '0;
-            idex_b          <= '0;
-            idex_alucontrol <= '0;
-            idex_imm        <= '0;
-            idex_pc_plus_shimm <= '0;
-            idex_branch_taken <= '0;
-            {idex_regwrite, idex_memtoreg, idex_branch,
-            idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
-        end else begin
-            idex_rs1        <= ifid_i[19:15];
-            idex_rs2        <= ifid_i[24:20];
-            idex_rd         <= ifid_i[11:7];
-            idex_a          <= id_rs1_val;
-            idex_b          <= id_rs2_val;
-            idex_alucontrol <= {ifid_i[30], ifid_i[14:12]};
-            idex_imm        <= imm;
-            idex_pc_plus_shimm <= pc_plus_shimm;
+// Data path registers
+dffr_sync_flush #(.DW(5))  u_idex_rs1_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(ifid_i[19:15]),               .dout(idex_rs1));
+dffr_sync_flush #(.DW(5))  u_idex_rs2_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(ifid_i[24:20]),               .dout(idex_rs2));
+dffr_sync_flush #(.DW(5))  u_idex_rd_r         (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(ifid_i[11:7]),                .dout(idex_rd));
+dffr_sync_flush #(.DW(DW)) u_idex_a_r          (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(id_rs1_val),                  .dout(idex_a));
+dffr_sync_flush #(.DW(DW)) u_idex_b_r          (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(id_rs2_val),                  .dout(idex_b));
+dffr_sync_flush #(.DW(4))  u_idex_alucontrol_r (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din({ifid_i[30], ifid_i[14:12]}), .dout(idex_alucontrol));
+dffr_sync_flush #(.DW(DW)) u_idex_imm_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(imm),                         .dout(idex_imm));
+dffr_sync_flush #(.DW(DW)) u_idex_pcs_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(pc_plus_shimm),               .dout(idex_pc_plus_shimm));
 
-            // Insert bubble (NOP) on load-use hazard
-            if (hazard_flag) begin
-                idex_branch_taken <= '0;
-                {idex_regwrite, idex_memtoreg, idex_branch,
-                idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op} <= '0;
-            end else begin
-                idex_branch_taken <= branch_taken;
-                {idex_regwrite, idex_memtoreg, idex_branch,
-                idex_memread,  idex_memwrite, idex_alusrc, idex_alu_op}
-                    <= {regwrite, memtoreg, branch, memread, memwrite, alusrc, alu_op};
-            end
-        end
-    end
-end
+// Control registers. These are also flushed on hazard_flag to insert NOP bubbles
+dffr_sync_flush #(.DW(1)) u_idex_branch_taken_r (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(branch_taken), .dout(idex_branch_taken));
+dffr_sync_flush #(.DW(1)) u_idex_regwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(regwrite),     .dout(idex_regwrite));
+dffr_sync_flush #(.DW(1)) u_idex_memtoreg_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memtoreg),     .dout(idex_memtoreg));
+dffr_sync_flush #(.DW(1)) u_idex_branch_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(branch),       .dout(idex_branch));
+dffr_sync_flush #(.DW(1)) u_idex_memread_r      (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memread),      .dout(idex_memread));
+dffr_sync_flush #(.DW(1)) u_idex_memwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memwrite),     .dout(idex_memwrite));
+dffr_sync_flush #(.DW(1)) u_idex_alusrc_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(alusrc),       .dout(idex_alusrc));
+dffr_sync_flush #(.DW(2)) u_idex_alu_op_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(alu_op),       .dout(idex_alu_op));
 
 endmodule : rv_idu

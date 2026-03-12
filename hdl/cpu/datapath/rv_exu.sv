@@ -129,28 +129,16 @@ rv_fwdu u_fwdu (
 );
 
 // EX/MEM pipeline registers
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        exm_zflag  <= '0;
-        exm_aluout <= '0;
-        exm_pc_plus_shimm <= '0;
-        exm_muxb   <= '0;
-        exm_rd     <= '0;
-        exm_branch_taken <= '0;
-        {exm_regwrite, exm_memtoreg, exm_branch,
-         exm_memread,  exm_memwrite} <= '0;
-    end else begin
-        exm_zflag  <= zflag;
-        exm_aluout <= alu_out;
-        exm_pc_plus_shimm <= idex_pc_plus_shimm;
-        exm_muxb   <= idex_muxb;
-        exm_rd     <= idex_rd;
-        exm_branch_taken <= branch_taken;
-        {exm_regwrite, exm_memtoreg, exm_branch,
-         exm_memread,  exm_memwrite}
-            <= {idex_regwrite, idex_memtoreg, idex_branch,
-                idex_memread,  idex_memwrite};
-    end
-end
+dffr #(.DW(1))  u_exm_zflag_r        (.clk(clk), .rst_n(rst_n), .din(zflag),            .dout(exm_zflag));
+dffr #(.DW(DW)) u_exm_aluout_r       (.clk(clk), .rst_n(rst_n), .din(alu_out),          .dout(exm_aluout));
+dffr #(.DW(DW)) u_exm_pc_plus_shimm_r(.clk(clk), .rst_n(rst_n), .din(idex_pc_plus_shimm),.dout(exm_pc_plus_shimm));
+dffr #(.DW(DW)) u_exm_muxb_r         (.clk(clk), .rst_n(rst_n), .din(idex_muxb),        .dout(exm_muxb));
+dffr #(.DW(5))  u_exm_rd_r           (.clk(clk), .rst_n(rst_n), .din(idex_rd),          .dout(exm_rd));
+dffr #(.DW(1))  u_exm_branch_taken_r (.clk(clk), .rst_n(rst_n), .din(branch_taken),     .dout(exm_branch_taken));
+dffr #(.DW(1))  u_exm_regwrite_r     (.clk(clk), .rst_n(rst_n), .din(idex_regwrite),    .dout(exm_regwrite));
+dffr #(.DW(1))  u_exm_memtoreg_r     (.clk(clk), .rst_n(rst_n), .din(idex_memtoreg),    .dout(exm_memtoreg));
+dffr #(.DW(1))  u_exm_branch_r       (.clk(clk), .rst_n(rst_n), .din(idex_branch),      .dout(exm_branch));
+dffr #(.DW(1))  u_exm_memread_r      (.clk(clk), .rst_n(rst_n), .din(idex_memread),     .dout(exm_memread));
+dffr #(.DW(1))  u_exm_memwrite_r     (.clk(clk), .rst_n(rst_n), .din(idex_memwrite),    .dout(exm_memwrite));
 
 endmodule : rv_exu

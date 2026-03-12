@@ -3,6 +3,9 @@
 // Common modules
 ${COMMON_DIR}/dff.sv
 ${COMMON_DIR}/dffr.sv
+${COMMON_DIR}/dffr_sync_flush.sv
+${COMMON_DIR}/dffre.sv
+${COMMON_DIR}/dffre_sync_flush.sv
 ${COMMON_DIR}/mem.sv
 
 // Types package

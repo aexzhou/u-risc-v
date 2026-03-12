@@ -1,9 +1,10 @@
-module dffr #(
+module dffre #(
     parameter int               DW = 32,
     parameter logic [DW-1:0] RESET = {DW{1'b0}}
 ) (
     input  logic          clk,
     input  logic          rst_n,
+    input  logic          en,
     input  logic [DW-1:0] din,
     output logic [DW-1:0] dout
 );
@@ -13,7 +14,7 @@ module dffr #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             dr <= RESET;
-        else
+        else if (en)
             dr <= din;
     end
 
