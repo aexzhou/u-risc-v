@@ -27,8 +27,9 @@ always_comb begin
         ALU_SRL: out = in1 >> in2[5:0];
         ALU_SRA: out = $signed(in1) >>> in2[5:0];
         ALU_SUB: out = in1 - in2;
-        ALU_SLT: out = {{DW-1{1'b0}}, (in1 < in2)};  // SLT
-        ALU_NOR: out = ~(in1 | in2);                 // NOR
+        ALU_SLTU: out = {{DW-1{1'b0}}, (in1 < in2)};  				   // SLTU
+        ALU_SLT: out = {{DW-1{1'b0}}, ($signed(in1) < $signed(in2))};  // SLT
+        ALU_NOR: out = ~(in1 | in2);                 				   // NOR
 		ALU_XOR: out = in1 ^ in2;
         default: out = {DW{1'bx}};
     endcase

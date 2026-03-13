@@ -31,14 +31,18 @@ module rv_alu_ctrl(control, alu_op, opout);
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b001)    opout = ALU_SLL; // sll
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b101)    opout = ALU_SRL; // srl
         else if (alu_op == 2'b10 && control[3] == 1 && funct3 == 3'b101)    opout = ALU_SRA; // sra
+        else if (alu_op == 2'b10 && funct3 == 3'b100 && control[3] == 0)    opout = ALU_XOR; // xor
+		else if (alu_op == 2'b10 && funct3 == 3'b010 && control[3] == 0)    opout = ALU_SLT;  // slt
+		else if (alu_op == 2'b10 && funct3 == 3'b011 && control[3] == 0)    opout = ALU_SLTU; // sltu
+		else if (alu_op == 2'b00 && funct3 == 3'b000 && control[3] == 0)    opout = ALU_ADD; // add 
         else if (alu_op == 2'b00 && funct3 == 3'b001)                       opout = ALU_SLL; // slli
         else if (alu_op == 2'b00 && funct3 == 3'b101 && control[3] == 0)    opout = ALU_SRL; // srli
         else if (alu_op == 2'b00 && funct3 == 3'b101 && control[3] == 1)    opout = ALU_SRA; // srai
         else if (alu_op == 2'b00 && funct3 == 3'b000)                       opout = ALU_ADD; // addi
         else if (alu_op == 2'b00 && funct3 == 3'b111)                       opout = ALU_AND; // andi
         else if (alu_op == 2'b00 && funct3 == 3'b110)                       opout = ALU_OR;  // ori
-        else if (alu_op == 2'b00)                                           opout = ALU_ADD; // add (I-type default)
-        else if (alu_op == 2'b10 && funct3 == 3'b100 && control[3] == 0)    opout = ALU_XOR;
+        else if (alu_op == 2'b00 && funct3 == 3'b100)                       opout = ALU_XOR; // xori
+	
         else                                                                opout = alu_op_e'(4'bxxxx);
     end
 endmodule
