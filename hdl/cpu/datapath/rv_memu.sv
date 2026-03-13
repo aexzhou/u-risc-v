@@ -22,13 +22,18 @@ module rv_memu #(
     output logic           mwb_memtoreg
 );
 
-mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (
+sram #(
+    .DEPTH(DMEM_DEPTH), 
+    .DATA_WIDTH(DW),
+    .ADDR_WIDTH(64)
+) u_dmem (
     .clk        (clk),
-    .address    (exm_aluout),
-    .write_data (exm_muxb),
-    .mem_read   (exm_memread),
-    .mem_write  (exm_memwrite),
-    .read_data  (mwb_dout)
+    .addr       (exm_aluout),
+    .data_in    (exm_muxb),
+    .cs         (1'b1),
+    .oe         (exm_memread),
+    .we         (exm_memwrite),
+    .data_out   (mwb_dout)
 );
 
 // MEM/WB pipeline registers

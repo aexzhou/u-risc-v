@@ -40,13 +40,19 @@ dffre #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
 
 // Instruction memory (read-only; mem_write tied low)
 logic [31:0] imem_out;
-mem #(.DEPTH(IMEM_DEPTH), .DW(32)) u_imem (
+
+sram #(
+    .DEPTH(IMEM_DEPTH), 
+    .DATA_WIDTH(32),
+    .ADDR_WIDTH(64)
+) u_imem (
     .clk        (clk),
-    .address    (pc_out),
-    .write_data (32'b0),
-    .mem_read   (1'b1),
-    .mem_write  (1'b0),
-    .read_data  (imem_out)
+    .addr       (pc_out),
+    .data_in    (32'd0),
+    .cs         (1'b1),
+    .oe         (1'b1),
+    .we         (1'b0),
+    .data_out   (imem_out)
 );
 
 // IF/ID pipeline registers

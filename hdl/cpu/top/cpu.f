@@ -7,6 +7,7 @@ ${COMMON_DIR}/dffr_sync_flush.sv
 ${COMMON_DIR}/dffre.sv
 ${COMMON_DIR}/dffre_sync_flush.sv
 ${COMMON_DIR}/mem.sv
+${COMMON_DIR}/sram.sv
 
 // Types package
 ${CHIPLEVEL_DIR}/rv_alu_types.sv

@@ -45,6 +45,16 @@ logic [DW-1:0] id_rs1_val, id_rs2_val;
 logic [1:0]    alu_op;
 logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
 
+logic mwb_regwrite_non_x0;
+logic forward_mwb_to_rs1, forward_mwb_to_rs2;
+
+assign mwb_regwrite_non_x0 = mwb_regwrite && (mwb_rd != 0);
+assign forward_mwb_to_rs1 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[19:15]);
+assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
+
+assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
+assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
+
 // Branch target: immediate left-shifted by 1 + ifid_pc
 assign sh_imm        = imm;
 assign pc_plus_shimm = sh_imm + ifid_pc;
@@ -76,9 +86,6 @@ rv_regfile u_regfile (
     .data_out1  (regout1),
     .data_out2  (regout2)
 );
-
-assign id_rs1_val = regout1;
-assign id_rs2_val = regout2;
 
 rv_hdu u_hdu (
     .ifid_rs1    (ifid_i[19:15]),
