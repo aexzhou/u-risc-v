@@ -1,5 +1,5 @@
 /*
-* Arithmetic bringup test: addi, add, sub, xor, xori, slt.
+* Arithmetic bringup test: addi, add, sub, xor, xori, slt, sltu.
 * Copyright (C) 2026 Ryan Liu
 *
 * This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,9 @@ class test_cpu_bringup_arithmetic extends test_cpu_bringup_base;
         imem[5] = 32'b00000000001000001100001010110011; // xor  x5, x1, x2
         imem[6] = 32'b00000000001100001100001100010011; // xori x6, x1, 3
         imem[7] = 32'b00000000001000001010001110110011; // slt  x7, x1, x2
+        imem[8] = 32'b00000000000100000000010000010011; // addi x8, x0, 1
+        imem[9] = 32'b11111111111100000000010010010011; // addi x9, x0, -1
+        imem[10] = 32'b00000000100101000011010100110011; // sltu x10, x8, x9
     endfunction
 
     virtual task run();
@@ -46,10 +49,11 @@ class test_cpu_bringup_arithmetic extends test_cpu_bringup_base;
         `ASSERT_EQ(`U_REGFILE_PATH.X[5], 64'h3)
         `ASSERT_EQ(`U_REGFILE_PATH.X[6], 64'h6)
         `ASSERT_EQ(`U_REGFILE_PATH.X[7], 64'h1)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[10], 64'h1)
     endtask
 
     virtual task report();
-        $display("[%s] X1=0x%0h X2=0x%0h X3=0x%0h X4=0x%0h X5=0x%0h X6=0x%0h X7=0x%0h",
+        $display("[%s] X1=0x%0h X2=0x%0h X3=0x%0h X4=0x%0h X5=0x%0h X6=0x%0h X7=0x%0h X10=0x%0h",
                  testname,
                  `U_REGFILE_PATH.X[1],
                  `U_REGFILE_PATH.X[2],
@@ -57,6 +61,7 @@ class test_cpu_bringup_arithmetic extends test_cpu_bringup_base;
                  `U_REGFILE_PATH.X[4],
                  `U_REGFILE_PATH.X[5],
                  `U_REGFILE_PATH.X[6],
-                 `U_REGFILE_PATH.X[7]);
+                 `U_REGFILE_PATH.X[7],
+                 `U_REGFILE_PATH.X[10]);
     endtask
 endclass

@@ -6,19 +6,18 @@
  * and reducing its latency thus decreasing clk cycle time.
  */
 
+/*
+* alu-op values simplified:
+* 2'b10 -> R type, also Load and Store
+* 2'b00 -> I type
+* 2'b01 -> B type
+*/
+
 module rv_alu_ctrl(control, alu_op, opout);
-/* Inputs towards the ALU:
- * ALU_AND (4'b0000): AND
- * ALU_OR  (4'b0001): OR
- * ALU_ADD (4'b0010): ADD
- * ALU_SUB (4'b0110): SUB
- * ALU_SLT (4'b0111): SLT (Set on Less Than): will output 1 if A < B
- * ALU_NOR (4'b1100): NOR
- */
-    import rv_alu_types::*;
-    input [3:0] control; // 32-bit instruction input (funct7 bit)
-    input [1:0] alu_op; // 2-bit alu_op from the Control Module
-    output alu_op_e opout; // 4-bit output towards the ALU
+   import rv_alu_types::*;
+    input [3:0] control;     // 32-bit instruction input (funct7 bit)
+    input [1:0] alu_op;      // 2-bit alu_op from the Control Module, values specified above
+    output alu_op_e opout;   // 4-bit output towards the actual ALU for computation
     wire [2:0] funct3;
     assign funct3 = control[2:0];
 
