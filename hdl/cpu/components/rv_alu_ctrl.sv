@@ -16,7 +16,7 @@ module rv_alu_ctrl(control, alu_op, opout);
  * ALU_NOR (4'b1100): NOR
  */
     import rv_alu_types::*;
-    input [3:0] control; // 32-bit instruction input
+    input [3:0] control; // 32-bit instruction input (funct7 bit)
     input [1:0] alu_op; // 2-bit alu_op from the Control Module
     output alu_op_e opout; // 4-bit output towards the ALU
     wire [2:0] funct3;
@@ -38,6 +38,7 @@ module rv_alu_ctrl(control, alu_op, opout);
         else if (alu_op == 2'b00 && funct3 == 3'b111)                       opout = ALU_AND; // andi
         else if (alu_op == 2'b00 && funct3 == 3'b110)                       opout = ALU_OR;  // ori
         else if (alu_op == 2'b00)                                           opout = ALU_ADD; // add (I-type default)
+        else if (alu_op == 2'b10 && funct3 == 3'b100 && control[3] == 0)    opout = ALU_XOR;
         else                                                                opout = alu_op_e'(4'bxxxx);
     end
 endmodule

@@ -29,6 +29,7 @@ always_comb begin
         ALU_SUB: out = in1 - in2;
         ALU_SLT: out = {{DW-1{1'b0}}, (in1 < in2)};  // SLT
         ALU_NOR: out = ~(in1 | in2);                 // NOR
+		ALU_XOR: out = in1 ^ in2;
         default: out = {DW{1'bx}};
     endcase
 
