@@ -62,7 +62,7 @@ sram #(
 );
 
 // IF/ID pipeline registers
-dffre            #(.DW(DW)) u_ifid_pc_r (.clk(clk), .rst_n(rst_n), .en(ifid_write), .din(pc_out), .dout(ifid_pc));
+dffre            #(.DW(DW)) u_ifid_pc_r (.clk(clk), .rst_n(rst_n), .en(ifid_write), .din(pc_prev), .dout(ifid_pc));
 
 dffre_sync_flush #(.DW(32)) u_ifid_i_r  (.clk(clk), .rst_n(rst_n), .en(ifid_write), .flush(if_flush | pc_src), .din(imem_out), .dout(ifid_i));
 
