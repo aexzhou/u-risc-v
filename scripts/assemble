@@ -31,6 +31,11 @@ LD      = f'{PREFIX}-ld'
 OBJCOPY = f'{PREFIX}-objcopy'
 OBJDUMP = f'{PREFIX}-objdump'
 
+# Disassembly register name style:
+#   'numeric' — use x0–x31 (matches RTL/HDL convention)
+#   'abi'     — use ra, sp, t0, a0, … (standard ABI names)
+DISASM_REG_STYLE = 'numeric'
+
 
 def check_toolchain():
     missing = []
@@ -169,10 +174,11 @@ with tempfile.TemporaryDirectory(prefix='uriscv_asm_') as tmpdir:
 
     # 5. Generate disassembly: machine-code word // asm instruction
     print(f"[objdump] prog.elf -> {os.path.relpath(out_dis)}")
+    march_opts = 'no-aliases,numeric' if DISASM_REG_STYLE == 'numeric' else 'no-aliases'
     r = run_tool([
         OBJDUMP,
         '-d',
-        '-M', 'no-aliases',
+        '-M', march_opts,
         '--no-show-raw-insn',
         elf_file,
     ])
@@ -193,7 +199,7 @@ with tempfile.TemporaryDirectory(prefix='uriscv_asm_') as tmpdir:
             word = int.from_bytes(raw[i:i+4], 'little')
             addr = i
             insn = addr_to_insn.get(addr, '???')
-            f.write(f'{word:08x}  // {insn}\n')
+            f.write(f'0x{addr:08x}:  {word:08x}  // {insn}\n')
 
 print(f"\nDone: {out_hex}")
 print(f"      {out_dis}")
