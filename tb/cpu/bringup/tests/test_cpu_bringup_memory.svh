@@ -28,7 +28,7 @@ class test_cpu_bringup_memory extends test_cpu_bringup_base;
         imem[1] = 32'b00000000011000000000000100010011; // addi x2, x0, 6
         imem[2] = 32'b00000000001000001000001000110011; // add  x4, x1, x2
         imem[3] = 32'b00000000010000010010000000100011; // sw   x4, 0(x2)
-        imem[4] = 32'b00000000000000010101000100000011; // lw   x2, 0(x2)
+        imem[4] = 32'b00000000000000010010000100000011; // lw   x2, 0(x2)
     endfunction
 
     virtual task run();
@@ -36,14 +36,14 @@ class test_cpu_bringup_memory extends test_cpu_bringup_base;
     endtask
 
     virtual task check();
-        `ASSERT_EQ(`U_DMEM_PATH.memory[0], `U_REGFILE_PATH.X[4])
-        `ASSERT_EQ(`U_REGFILE_PATH.X[2], `U_DMEM_PATH.memory[0])
+        `ASSERT_EQ(`U_DMEM_PATH.memory[1], `U_REGFILE_PATH.X[4])
+        `ASSERT_EQ(`U_REGFILE_PATH.X[2], `U_DMEM_PATH.memory[1])
     endtask
 
     virtual task report();
-        $display("[%s] dmem[0]=0x%0h X2=0x%0h X4=0x%0h",
+        $display("[%s] dmem[1]=0x%0h X2=0x%0h X4=0x%0h",
                  testname,
-                 `U_DMEM_PATH.memory[0],
+                 `U_DMEM_PATH.memory[1],
                  `U_REGFILE_PATH.X[2],
                  `U_REGFILE_PATH.X[4]);
     endtask

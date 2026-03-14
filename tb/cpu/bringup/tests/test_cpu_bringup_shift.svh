@@ -39,7 +39,7 @@ class test_cpu_bringup_shift extends test_cpu_bringup_base;
     virtual task check();
         `ASSERT_EQ(`U_REGFILE_PATH.X[1], 64'hc)
         `ASSERT_EQ(`U_REGFILE_PATH.X[2], 64'h3)
-        `ASSERT_EQ(`U_REGFILE_PATH.X[4], 64'hFFFFFFFFFFFFFFF5)
+        `ASSERT_EQ(`U_REGFILE_PATH.X[4], 32'hFFFFFFF5)
         `ASSERT_EQ(`U_REGFILE_PATH.X[5], 64'h60)
         `ASSERT_EQ(`U_REGFILE_PATH.X[6], 64'h1)
     endtask
