@@ -1,5 +1,5 @@
 module rv_memu #(
-    parameter int DW         = 64,
+    parameter int DW         = 32,
     parameter int DMEM_DEPTH = 256
 ) (
     input  logic           clk,
@@ -11,13 +11,8 @@ module rv_memu #(
     input  logic [4:0]     exm_rd,
     input  logic           exm_regwrite,
     input  logic           exm_memtoreg,
-    input  logic           exm_branch,
     input  logic           exm_memread,
     input  logic           exm_memwrite,
-    input  logic           exm_zflag,
-
-    // To IFU (branch control)
-    output logic           pc_src,
 
     // MEM/WB pipeline register outputs (to WBU and IDU/EXU)
     output logic [DW-1:0]  mwb_dout,
@@ -27,30 +22,24 @@ module rv_memu #(
     output logic           mwb_memtoreg
 );
 
-assign pc_src = exm_branch & exm_zflag;
-
-mem #(.DEPTH(DMEM_DEPTH), .DW(DW)) u_dmem (
+sram #(
+    .DEPTH(DMEM_DEPTH), 
+    .DATA_WIDTH(DW),
+    .ADDR_WIDTH(64)
+) u_dmem (
     .clk        (clk),
-    .address    (exm_aluout),
-    .write_data (exm_muxb),
-    .mem_read   (exm_memread),
-    .mem_write  (exm_memwrite),
-    .read_data  (mwb_dout)
+    .addr       (exm_aluout),
+    .data_in    (exm_muxb),
+    .cs         (1'b1),
+    .oe         (exm_memread),
+    .we         (exm_memwrite),
+    .data_out   (mwb_dout)
 );
 
 // MEM/WB pipeline registers
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        mwb_aluout   <= '0;
-        mwb_rd       <= '0;
-        mwb_regwrite <= '0;
-        mwb_memtoreg <= '0;
-    end else begin
-        mwb_aluout   <= exm_aluout;
-        mwb_rd       <= exm_rd;
-        mwb_regwrite <= exm_regwrite;
-        mwb_memtoreg <= exm_memtoreg;
-    end
-end
+dffr #(.DW(DW)) u_mwb_aluout_r  (.clk(clk), .rst_n(rst_n), .din(exm_aluout),   .dout(mwb_aluout));
+dffr #(.DW(5))  u_mwb_rd_r      (.clk(clk), .rst_n(rst_n), .din(exm_rd),       .dout(mwb_rd));
+dffr #(.DW(1))  u_mwb_regwrite_r(.clk(clk), .rst_n(rst_n), .din(exm_regwrite), .dout(mwb_regwrite));
+dffr #(.DW(1))  u_mwb_memtoreg_r(.clk(clk), .rst_n(rst_n), .din(exm_memtoreg), .dout(mwb_memtoreg));
 
 endmodule : rv_memu

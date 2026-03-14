@@ -29,15 +29,15 @@ class test_asm_simple extends test_asm_base;
     endtask
 
     virtual task check();
-        `ASSERT_EQ(`U_REGFILE_PATH.X[10], 64'd20)  // a0 = dmem[0] loaded back
-        `ASSERT_EQ(`U_REGFILE_PATH.X[11], 64'd7)   // a1 = dmem[1] loaded back
-        `ASSERT_EQ(`U_REGFILE_PATH.X[12], 64'd27)  // a2 = a0 + a1
+        `ASSERT_EQ(`U_REGFILE_PATH.X[10], 64'd20)  // x10 = dmem[0] loaded back
+        `ASSERT_EQ(`U_REGFILE_PATH.X[11], 64'd7)   // x11 = dmem[1] loaded back
+        `ASSERT_EQ(`U_REGFILE_PATH.X[12], 64'd27)  // x12 = x10 + x11
         `ASSERT_EQ(`U_DMEM_PATH.memory[0], 64'd20) // dmem[0] stored correctly
         `ASSERT_EQ(`U_DMEM_PATH.memory[1], 64'd7)  // dmem[1] stored correctly
     endtask
 
     virtual task report();
-        $display("[%s] a0=%0d (exp 20)  a1=%0d (exp 7)  a2=%0d (exp 27)  dmem[0]=%0d  dmem[1]=%0d",
+        $display("[%s] x10=%0d (exp 20)  x11=%0d (exp 7)  x12=%0d (exp 27)  dmem[0]=%0d  dmem[1]=%0d",
                  testname,
                  `U_REGFILE_PATH.X[10], `U_REGFILE_PATH.X[11], `U_REGFILE_PATH.X[12],
                  `U_DMEM_PATH.memory[0], `U_DMEM_PATH.memory[1]);

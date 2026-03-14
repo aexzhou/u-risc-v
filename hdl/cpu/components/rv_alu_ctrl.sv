@@ -8,9 +8,10 @@
 
 /*
 * alu-op values simplified:
-* 2'b10 -> R type, also Load and Store
 * 2'b00 -> I type
 * 2'b01 -> B type
+* 2'b10 -> R type
+* 2'b11 -> LOAD/STORE address (always ADD)
 */
 
 module rv_alu_ctrl(control, alu_op, opout);
@@ -22,7 +23,8 @@ module rv_alu_ctrl(control, alu_op, opout);
     assign funct3 = control[2:0];
 
     always_comb begin
-        if      (alu_op == 2'b01)                                           opout = ALU_SUB; // sub (beq)
+        if      (alu_op == 2'b11)                                           opout = ALU_ADD; // LOAD/STORE address
+        else if (alu_op == 2'b01)                                           opout = ALU_SUB; // sub (beq)
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b000)    opout = ALU_ADD; // add(r)
         else if (alu_op == 2'b10 && control[3] == 1 && funct3 == 3'b000)    opout = ALU_SUB; // sub
         else if (alu_op == 2'b10 && control[3] == 0 && funct3 == 3'b111)    opout = ALU_AND; // and

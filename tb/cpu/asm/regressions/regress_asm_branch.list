@@ -1,0 +1,17 @@
+test_asm_beq_taken
+test_asm_beq_not_taken
+test_asm_bne_taken
+test_asm_bne_not_taken
+test_asm_blt_taken
+test_asm_blt_not_taken
+test_asm_blt_eq_edge
+test_asm_bge_taken
+test_asm_bge_not_taken
+test_asm_bge_eq_edge
+test_asm_bltu_taken
+test_asm_bltu_not_taken
+test_asm_bgeu_taken
+test_asm_bgeu_not_taken
+test_asm_bgeu_eq_edge
+test_asm_branch_flush
+test_asm_branch_all
