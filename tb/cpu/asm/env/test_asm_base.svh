@@ -21,7 +21,7 @@
 
 `define ASSERT_EQ(a, b) \
     if ((a) !== (b)) begin \
-        $display("ASSERT_EQ FAIL: %s = 0x%016h, %s = 0x%016h", `"a`", (a), `"b`", (b)); \
+        $display("ASSERT_EQ FAIL: %s = 0x%08h, %s = 0x%08h", `"a`", (a), `"b`", (b)); \
         pass = 0; \
     end
 
