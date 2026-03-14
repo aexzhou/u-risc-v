@@ -1,5 +1,5 @@
 module rv_idu #(
-    parameter int DW = 64
+    parameter int DW = 32
 ) (
     input  logic           clk,
     input  logic           rst_n,

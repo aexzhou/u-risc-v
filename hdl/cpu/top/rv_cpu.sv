@@ -7,7 +7,7 @@
  */
 
 module rv_cpu #(
-    parameter int DW         = 64,
+    parameter int DW         = 32,
     parameter int IMEM_DEPTH = 256,
     parameter int DMEM_DEPTH = 256
 ) (

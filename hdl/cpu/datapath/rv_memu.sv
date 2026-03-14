@@ -1,5 +1,5 @@
 module rv_memu #(
-    parameter int DW         = 64,
+    parameter int DW         = 32,
     parameter int DMEM_DEPTH = 256
 ) (
     input  logic           clk,

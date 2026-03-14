@@ -1,5 +1,5 @@
 module rv_ifu #(
-    parameter int DW         = 64,
+    parameter int DW         = 32,
     parameter int IMEM_DEPTH = 256
 ) (
     input  logic           clk,
@@ -22,21 +22,27 @@ module rv_ifu #(
 // =========================================================================
 // IF Instruction Fetch
 // =========================================================================
-logic [DW-1:0] pc_out, pc_incremented, pc_in;
+logic [DW-1:0] pc_r, pc_incremented, pc_next, pc_prev, pc_out;
 
-always_comb pc_incremented = pc_out + DW'(4);
+always_comb pc_incremented = pc_r + DW'(4);
 
 // pc_src = 1 -> take branch target; 0 -> PC+4
-assign pc_in = pc_src ? pc_branch_target : pc_incremented;
+assign pc_next = pc_src ? pc_branch_target : pc_incremented;
+
+always_ff @(posedge clk) begin
+    pc_prev <= pc_r;
+end
 
 // PC register: resetable, write-enabled by pc_write
 dffre #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
     .clk   (clk),
     .rst_n (rst_n),
     .en    (pc_write),
-    .din   (pc_in),
-    .dout  (pc_out)
+    .din   (pc_next),
+    .dout  (pc_r)
 );
+
+assign pc_out = if_flush ? pc_prev : pc_r;
 
 // Instruction memory (read-only; mem_write tied low)
 logic [31:0] imem_out;
