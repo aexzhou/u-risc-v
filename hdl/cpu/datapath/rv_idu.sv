@@ -33,7 +33,8 @@ module rv_idu #(
     output logic           idex_memwrite,
     output logic           idex_alusrc,
     output logic [1:0]     idex_alu_op,
-    output logic [3:0]     idex_alucontrol
+    output logic [3:0]     idex_alucontrol,
+    output logic           idex_ecall
 );
 
 logic [DW-1:0] imm, sh_imm, pc_plus_shimm;
@@ -43,7 +44,7 @@ logic [DW-1:0] id_rs1_val, id_rs2_val;
 
 // Control outputs
 logic [1:0]    alu_op;
-logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
+logic          branch, memread, memtoreg, memwrite, alusrc, regwrite, ecall;
 
 logic mwb_regwrite_non_x0;
 logic forward_mwb_to_rs1, forward_mwb_to_rs2;
@@ -72,7 +73,8 @@ rv_datapath_ctrl u_datapath_ctrl (
     .memtoreg (memtoreg),
     .memwrite (memwrite),
     .alusrc   (alusrc),
-    .regwrite (regwrite)
+    .regwrite (regwrite),
+    .ecall    (ecall)
 );
 
 rv_regfile u_regfile (
@@ -116,5 +118,6 @@ dffr_sync_flush #(.DW(1)) u_idex_memread_r      (.clk(clk), .rst_n(rst_n), .flus
 dffr_sync_flush #(.DW(1)) u_idex_memwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memwrite),     .dout(idex_memwrite));
 dffr_sync_flush #(.DW(1)) u_idex_alusrc_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(alusrc),       .dout(idex_alusrc));
 dffr_sync_flush #(.DW(2)) u_idex_alu_op_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(alu_op),       .dout(idex_alu_op));
+dffr_sync_flush #(.DW(1)) u_idex_ecall_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(ecall),        .dout(idex_ecall));
 
 endmodule : rv_idu

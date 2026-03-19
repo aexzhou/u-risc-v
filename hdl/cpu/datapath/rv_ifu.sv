@@ -62,15 +62,15 @@ sram #(
 );
 
 // Delayed branch flush: the sync SRAM needs two cycles of flush because
-// imem_out lags pc_out by one cycle. The first flush (from pc_src) kills the
+// imem_out lags pc_out by one cycle. The first flush kills the
 // instruction already in ifid_i, the delayed flush kills the stale SRAM
 // output that arrives one cycle later.
-logic pc_src_d1;
-dffr #(.DW(1)) u_pc_src_d1 (.clk(clk), .rst_n(rst_n), .din(pc_src), .dout(pc_src_d1));
+logic if_flush_d1;
+dffr #(.DW(1)) u_if_flush_d1 (.clk(clk), .rst_n(rst_n), .din(if_flush), .dout(if_flush_d1));
 
 // IF/ID pipeline registers
 dffre            #(.DW(DW)) u_ifid_pc_r (.clk(clk), .rst_n(rst_n), .en(ifid_write), .din(pc_prev), .dout(ifid_pc));
 
-dffre_sync_flush #(.DW(32)) u_ifid_i_r  (.clk(clk), .rst_n(rst_n), .en(ifid_write), .flush(if_flush | pc_src | pc_src_d1), .din(imem_out), .dout(ifid_i));
+dffre_sync_flush #(.DW(32)) u_ifid_i_r  (.clk(clk), .rst_n(rst_n), .en(ifid_write), .flush(if_flush | if_flush_d1), .din(imem_out), .dout(ifid_i));
 
 endmodule : rv_ifu

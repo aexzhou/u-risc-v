@@ -29,13 +29,15 @@ localparam CLK_HALF_PERIOD = 5;
 
 logic clk   = 0;
 logic rst_n = 1;
+logic ecall;
 
 rv_cpu #(
     .IMEM_DEPTH(4096),
     .DMEM_DEPTH(4096)
 ) u_cpu (
     .clk  (clk),
-    .rst_n(rst_n)
+    .rst_n(rst_n),
+    .ecall(ecall)
 );
 
 initial forever #CLK_HALF_PERIOD clk = ~clk;

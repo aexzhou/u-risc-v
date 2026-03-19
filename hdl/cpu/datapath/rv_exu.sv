@@ -20,6 +20,7 @@ module rv_exu #(
     input  logic           idex_alusrc,
     input  logic [1:0]     idex_alu_op,
     input  logic [3:0]     idex_alucontrol,
+    input  logic           idex_ecall,
 
     // From WBU (for forwarding mux)
     input  logic [DW-1:0]  write_data,
@@ -34,6 +35,7 @@ module rv_exu #(
     output logic           exm_memtoreg,
     output logic           exm_memread,
     output logic           exm_memwrite,
+    output logic           exm_ecall,
 
     output logic           pc_src,
     output logic [DW-1:0]  pc_branch_target
@@ -129,5 +131,6 @@ dffr #(.DW(1))  u_exm_regwrite_r(.clk(clk), .rst_n(rst_n), .din(idex_regwrite), 
 dffr #(.DW(1))  u_exm_memtoreg_r(.clk(clk), .rst_n(rst_n), .din(idex_memtoreg), .dout(exm_memtoreg));
 dffr #(.DW(1))  u_exm_memread_r (.clk(clk), .rst_n(rst_n), .din(idex_memread),  .dout(exm_memread));
 dffr #(.DW(1))  u_exm_memwrite_r(.clk(clk), .rst_n(rst_n), .din(idex_memwrite), .dout(exm_memwrite));
+dffr #(.DW(1))  u_exm_ecall_r   (.clk(clk), .rst_n(rst_n), .din(idex_ecall),    .dout(exm_ecall));
 
 endmodule : rv_exu
