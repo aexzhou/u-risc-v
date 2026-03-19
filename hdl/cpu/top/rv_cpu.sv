@@ -32,6 +32,7 @@ logic          idex_regwrite, idex_memtoreg, idex_branch;
 logic          idex_memread, idex_memwrite, idex_alusrc;
 logic [1:0]    idex_alu_op;
 logic [3:0]    idex_alucontrol;
+logic          idex_ecall;
 
 // EXU -> MEMU (EX/MEM pipeline registers)
 logic [DW-1:0] exm_aluout, exm_muxb;
@@ -91,7 +92,8 @@ rv_idu #(.DW(DW)) u_idu (
     .idex_memwrite  (idex_memwrite),
     .idex_alusrc    (idex_alusrc),
     .idex_alu_op    (idex_alu_op),
-    .idex_alucontrol(idex_alucontrol)
+    .idex_alucontrol(idex_alucontrol),
+    .idex_ecall     (idex_ecall)
 );
 
 rv_exu #(.DW(DW)) u_exu (
