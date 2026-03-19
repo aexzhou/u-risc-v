@@ -13,13 +13,15 @@ module rv_memu #(
     input  logic           exm_memtoreg,
     input  logic           exm_memread,
     input  logic           exm_memwrite,
+    input  logic           exm_ecall,
 
     // MEM/WB pipeline register outputs (to WBU and IDU/EXU)
     output logic [DW-1:0]  mwb_dout,
     output logic [DW-1:0]  mwb_aluout,
     output logic [4:0]     mwb_rd,
     output logic           mwb_regwrite,
-    output logic           mwb_memtoreg
+    output logic           mwb_memtoreg,
+    output logic           mwb_ecall
 );
 
 sram #(
@@ -41,5 +43,6 @@ dffr #(.DW(DW)) u_mwb_aluout_r  (.clk(clk), .rst_n(rst_n), .din(exm_aluout),   .
 dffr #(.DW(5))  u_mwb_rd_r      (.clk(clk), .rst_n(rst_n), .din(exm_rd),       .dout(mwb_rd));
 dffr #(.DW(1))  u_mwb_regwrite_r(.clk(clk), .rst_n(rst_n), .din(exm_regwrite), .dout(mwb_regwrite));
 dffr #(.DW(1))  u_mwb_memtoreg_r(.clk(clk), .rst_n(rst_n), .din(exm_memtoreg), .dout(mwb_memtoreg));
+dffr #(.DW(1))  u_mwb_ecall_r   (.clk(clk), .rst_n(rst_n), .din(exm_ecall),    .dout(mwb_ecall));
 
 endmodule : rv_memu

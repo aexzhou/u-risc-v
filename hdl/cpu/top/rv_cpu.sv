@@ -12,7 +12,8 @@ module rv_cpu #(
     parameter int DMEM_DEPTH = 256
 ) (
     input logic clk,
-    input logic rst_n
+    input logic rst_n,
+    output logic ecall
 );
 
 // =========================================================================
@@ -39,11 +40,13 @@ logic [DW-1:0] exm_aluout, exm_muxb;
 logic [4:0]    exm_rd;
 logic          exm_regwrite, exm_memtoreg;
 logic          exm_memread, exm_memwrite;
+logic          exm_ecall;
 
 // MEMU -> WBU (MEM/WB pipeline registers)
 logic [DW-1:0] mwb_dout, mwb_aluout;
 logic [4:0]    mwb_rd;
 logic          mwb_regwrite, mwb_memtoreg;
+logic          mwb_ecall;
 
 // WBU -> IDU/EXU
 logic [DW-1:0] write_data;
@@ -64,8 +67,9 @@ rv_ifu #(.DW(DW), .IMEM_DEPTH(IMEM_DEPTH)) u_ifu (
     .ifid_i          (ifid_i)
 );
 
-assign id_flush = pc_src;
-assign if_flush = pc_src;
+assign id_flush = pc_src | idex_ecall;
+assign if_flush = pc_src | idex_ecall;
+assign ecall = mwb_ecall;
 
 rv_idu #(.DW(DW)) u_idu (
     .clk            (clk),
@@ -114,6 +118,7 @@ rv_exu #(.DW(DW)) u_exu (
     .idex_alusrc    (idex_alusrc),
     .idex_alu_op    (idex_alu_op),
     .idex_alucontrol(idex_alucontrol),
+    .idex_ecall     (idex_ecall),
     .write_data     (write_data),
     .mwb_rd         (mwb_rd),
     .mwb_regwrite   (mwb_regwrite),
@@ -124,6 +129,7 @@ rv_exu #(.DW(DW)) u_exu (
     .exm_memtoreg   (exm_memtoreg),
     .exm_memread    (exm_memread),
     .exm_memwrite   (exm_memwrite),
+    .exm_ecall      (exm_ecall),
     .pc_src         (pc_src),
     .pc_branch_target(pc_branch_target)
 );
@@ -138,11 +144,13 @@ rv_memu #(.DW(DW), .DMEM_DEPTH(DMEM_DEPTH)) u_memu (
     .exm_memtoreg (exm_memtoreg),
     .exm_memread  (exm_memread),
     .exm_memwrite (exm_memwrite),
+    .exm_ecall    (exm_ecall),
     .mwb_dout     (mwb_dout),
     .mwb_aluout   (mwb_aluout),
     .mwb_rd       (mwb_rd),
     .mwb_regwrite (mwb_regwrite),
-    .mwb_memtoreg (mwb_memtoreg)
+    .mwb_memtoreg (mwb_memtoreg),
+    .mwb_ecall    (mwb_ecall)
 );
 
 rv_wbu #(.DW(DW)) u_wbu (
