@@ -10,6 +10,8 @@ package rv_alu_types;
         ALU_SRA = 4'b0101,  // Shift Right Arithmetic
         ALU_SUB = 4'b0110,  // Subtraction
         ALU_SLT = 4'b0111,  // Set on Less Than
+        ALU_XOR = 4'b1000,  // XOR
+		ALU_SLTU = 4'b1010, // SLTU
         ALU_NOR = 4'b1100   // Bitwise NOR
     } alu_op_e;
 

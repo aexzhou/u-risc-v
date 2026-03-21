@@ -1,19 +1,13 @@
 module dff #(
     parameter int DW = 32
 ) (
-    input  logic          clk,
-    input  logic          en,
-    input  logic [DW-1:0] din,
-    output logic [DW-1:0] dout
+    input                 clk,
+    input        [DW-1:0] d,
+    output logic [DW-1:0] q
 );
 
-    logic [DW-1:0] dr;
-
     always_ff @(posedge clk) begin
-        if (en)
-            dr <= din;
+        q <= d;
     end
-
-    assign dout = dr;
 
 endmodule

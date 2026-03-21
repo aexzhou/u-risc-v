@@ -2,14 +2,14 @@
 .globl _start
 
 _start:
-    addi t0, x0, 7       # t0 = 7
-    addi t1, x0, 13      # t1 = 13
-    add  t2, t0, t1      # t2 = 20
-    sw   t2, 0(x0)       # dmem[0] = 20
-    lw   a0, 0(x0)       # a0 = dmem[0] = 20
-    sw   t0, 8(x0)       # dmem[1] = 7
-    lw   a1, 8(x0)       # a1 = dmem[1] = 7
-    add  a2, a0, a1      # a2 = 20 + 7 = 27
+    addi x5, x0, 7       # x5 = 7
+    addi x6, x0, 13      # x6 = 13
+    add  x7, x5, x6      # x7 = 20
+    sw   x7, 0(x0)       # dmem[0] = 20
+    lw   x10, 0(x0)      # x10 = dmem[0] = 20
+    sw   x5, 8(x0)       # dmem[1] = 7
+    lw   x11, 8(x0)      # x11 = dmem[1] = 7
+    add  x12, x10, x11   # x12 = 20 + 7 = 27
 
 _end:
     addi x0, x0, 0

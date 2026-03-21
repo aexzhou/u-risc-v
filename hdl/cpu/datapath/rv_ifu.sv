@@ -1,5 +1,5 @@
 module rv_ifu #(
-    parameter int DW         = 64,
+    parameter int DW         = 32,
     parameter int IMEM_DEPTH = 256
 ) (
     input  logic           clk,
@@ -11,8 +11,8 @@ module rv_ifu #(
     input  logic           ifid_write,
     input  logic           if_flush,
 
-    // Branch target (from ID stage)
-    input  logic [DW-1:0]  pc_plus_shimm,
+    // Branch target (latched with branch instruction)
+    input  logic [DW-1:0]  pc_branch_target,
 
     // Outputs to ID stage
     output logic [DW-1:0]  ifid_pc,
@@ -22,47 +22,55 @@ module rv_ifu #(
 // =========================================================================
 // IF Instruction Fetch
 // =========================================================================
-logic [DW-1:0] pc_out, pc_incremented, pc_in;
+logic [DW-1:0] pc_r, pc_incremented, pc_next, pc_prev, pc_out;
 
-always_comb pc_incremented = pc_out + DW'(4);
+always_comb pc_incremented = pc_r + DW'(4);
 
 // pc_src = 1 -> take branch target; 0 -> PC+4
-assign pc_in = pc_src ? pc_plus_shimm : pc_incremented;
+assign pc_next = pc_src ? pc_branch_target : pc_incremented;
+
+always_ff @(posedge clk) begin
+    pc_prev <= pc_r;
+end
 
 // PC register: resetable, write-enabled by pc_write
-dffr #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
+dffre #(.DW(DW), .RESET({DW{1'b0}})) u_pc_r (
     .clk   (clk),
     .rst_n (rst_n),
     .en    (pc_write),
-    .din   (pc_in),
-    .dout  (pc_out)
+    .din   (pc_next),
+    .dout  (pc_r)
 );
+
+assign pc_out = if_flush ? pc_prev : pc_r;
 
 // Instruction memory (read-only; mem_write tied low)
 logic [31:0] imem_out;
-mem #(.DEPTH(IMEM_DEPTH), .DW(32)) u_imem (
+
+sram #(
+    .DEPTH(IMEM_DEPTH), 
+    .DATA_WIDTH(32),
+    .ADDR_WIDTH(64)
+) u_imem (
     .clk        (clk),
-    .address    (pc_out),
-    .write_data (32'b0),
-    .mem_read   (1'b1),
-    .mem_write  (1'b0),
-    .read_data  (imem_out)
+    .addr       (pc_out),
+    .data_in    (32'd0),
+    .cs         (1'b1),
+    .oe         (1'b1),
+    .we         (1'b0),
+    .data_out   (imem_out)
 );
 
-// IF/ID pipeline registers
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        ifid_pc <= '0;
-        ifid_i  <= '0;
-    end else begin
-        if (ifid_write)
-            ifid_pc <= pc_out;
+// Delayed branch flush: the sync SRAM needs two cycles of flush because
+// imem_out lags pc_out by one cycle. The first flush (from pc_src) kills the
+// instruction already in ifid_i, the delayed flush kills the stale SRAM
+// output that arrives one cycle later.
+logic pc_src_d1;
+dffr #(.DW(1)) u_pc_src_d1 (.clk(clk), .rst_n(rst_n), .din(pc_src), .dout(pc_src_d1));
 
-        if (if_flush)
-            ifid_i <= 32'd0;        // insert NOP on branch taken
-        else if (ifid_write)
-            ifid_i <= imem_out;
-    end
-end
+// IF/ID pipeline registers
+dffre            #(.DW(DW)) u_ifid_pc_r (.clk(clk), .rst_n(rst_n), .en(ifid_write), .din(pc_prev), .dout(ifid_pc));
+
+dffre_sync_flush #(.DW(32)) u_ifid_i_r  (.clk(clk), .rst_n(rst_n), .en(ifid_write), .flush(if_flush | pc_src | pc_src_d1), .din(imem_out), .dout(ifid_i));
 
 endmodule : rv_ifu

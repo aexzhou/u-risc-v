@@ -1,6 +1,5 @@
 module rv_datapath_ctrl (
     input  logic [6:0]    opcode,
-    input  logic          equal_flag,
     output logic [1:0]    alu_op,
     output logic          branch,
     output logic          lui,
@@ -10,8 +9,7 @@ module rv_datapath_ctrl (
     output logic          memtoreg,
     output logic          memwrite,
     output logic          alusrc,
-    output logic          regwrite,
-    output logic          if_flush
+    output logic          regwrite
 );
 
 always_comb begin
@@ -70,6 +68,5 @@ always_comb begin
     endcase
 end
 
-assign if_flush = equal_flag && branch;  // Flush IFID registers to stall with NOP
 
 endmodule

@@ -1,5 +1,5 @@
 module rv_wbu #(
-    parameter int DW = 64
+    parameter int DW = 32
 ) (
     input  logic [DW-1:0]  mwb_dout,
     input  logic [DW-1:0]  mwb_aluout,

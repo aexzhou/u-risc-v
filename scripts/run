@@ -196,7 +196,7 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
     compile_cmd = [
         'verilator',
         '--binary', '--sv', '-Wall', '--timing',
-        '-Wno-TIMESCALEMOD',
+        '-Wno-TIMESCALEMOD', '-Wno-fatal',
     ] + (['--trace'] if trace else []) + (
         ['--threads', str(threads)] if threads > 1 else []
     ) + (extra_verilator_args or []) + [
@@ -222,9 +222,14 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
     emit(f"cwd: {run_dir}")
     emit(f"{sim_bin}\n")
 
-    result = run_cmd([sim_bin], cwd=run_dir)
+    result = subprocess.run([sim_bin], cwd=run_dir, capture_output=True, text=True)
+    emit(result.stdout)
+    if result.stderr:
+        emit(result.stderr)
     if result.returncode != 0:
         raise RuntimeError(f"Simulation exited with non-zero status ({result.returncode})")
+    if 'FAIL' in result.stdout:
+        raise RuntimeError("Simulation reported FAIL")
 
     emit(f"\nOutputs in {run_dir}")
 
