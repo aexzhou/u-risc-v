@@ -1,3 +1,13 @@
+`define RV32I_R_OPCODE          7'b0110011
+`define RV32I_I_ALSL_OPCODE     7'b0010011
+`define RV32I_I_LOAD_OPCODE     7'b0000011
+`define RV32I_I_JALR_OPCODE     7'b1100111
+`define RV32I_S_OPCODE          7'b0100011
+`define RV32I_B_OPCODE          7'b1100011
+`define RV32I_J_OPCODE          7'b1100111
+`define RV32I_U_LUI_OPCODE      7'b0110111
+`define RV32I_U_AUIPC_OPCODE    7'b0010111
+
 `define RV32I_FUNCT7_LSB_POS        25
 `define RV32I_FUNCT7_WIDTH          7
 `define RV32I_FUNCT3_LSB_POS        12
