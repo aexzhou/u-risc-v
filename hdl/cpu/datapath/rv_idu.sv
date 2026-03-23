@@ -21,6 +21,7 @@ module rv_idu #(
     // ID/EX pipeline register outputs (to EXU)
     output logic [DW-1:0]  idex_imm,
     output logic [DW-1:0]  idex_pc_plus_shimm,
+    output logic [DW-1:0]  idex_pc_plus_4,
     output logic [DW-1:0]  idex_a,
     output logic [DW-1:0]  idex_b,
     output logic [4:0]     idex_rs1,
@@ -29,6 +30,9 @@ module rv_idu #(
     output logic           idex_regwrite,
     output logic           idex_memtoreg,
     output logic           idex_branch,
+    output logic           idex_jump,
+    output logic           idex_jalr,
+    output logic [1:0]     idex_result_src,
     output logic           idex_memread,
     output logic           idex_memwrite,
     output logic           idex_alusrc,
@@ -36,7 +40,7 @@ module rv_idu #(
     output logic [3:0]     idex_alucontrol
 );
 
-logic [DW-1:0] imm, sh_imm, pc_plus_shimm;
+logic [DW-1:0] imm, sh_imm, pc_plus_shimm, pc_plus_4;
 logic          hazard_flag;
 logic [DW-1:0] regout1, regout2;
 logic [DW-1:0] id_rs1_val, id_rs2_val;
@@ -50,7 +54,8 @@ logic                           ifid_invert_op;
 
 // Control outputs
 logic [1:0]    alu_op;
-logic          branch, memread, memtoreg, memwrite, alusrc, regwrite;
+logic [1:0]    result_src;
+logic          branch, jump, jalr, memread, memtoreg, memwrite, alusrc, regwrite;
 
 logic mwb_regwrite_non_x0;
 logic forward_mwb_to_rs1, forward_mwb_to_rs2;
@@ -62,9 +67,12 @@ assign forward_mwb_to_rs2 = mwb_regwrite_non_x0 && (mwb_rd == ifid_i[24:20]);
 assign id_rs1_val = forward_mwb_to_rs1 ? write_data : regout1;
 assign id_rs2_val = forward_mwb_to_rs2 ? write_data : regout2;
 
-// Branch target: immediate left-shifted by 1 + ifid_pc
+// Branch/jump target: immediate + ifid_pc
 assign sh_imm        = imm;
 assign pc_plus_shimm = sh_imm + ifid_pc;
+
+// Link address for JAL/JALR
+assign pc_plus_4 = ifid_pc + DW'(4);
 
 rv_immgen #(.DW(DW)) u_immgen (
     .in      (ifid_i),
@@ -80,14 +88,17 @@ assign ifid_invert_op = ifid_i[`RV32I_R_INVERT_OP_BIT_POS];
 
 
 rv_datapath_ctrl u_datapath_ctrl (
-    .opcode   (ifid_i[6:0]),
-    .alu_op   (alu_op),
-    .branch   (branch),
-    .memread  (memread),
-    .memtoreg (memtoreg),
-    .memwrite (memwrite),
-    .alusrc   (alusrc),
-    .regwrite (regwrite)
+    .opcode     (ifid_i[6:0]),
+    .alu_op     (alu_op),
+    .branch     (branch),
+    .jump       (jump),
+    .jalr       (jalr),
+    .result_src (result_src),
+    .memread    (memread),
+    .memtoreg   (memtoreg),
+    .memwrite   (memwrite),
+    .alusrc     (alusrc),
+    .regwrite   (regwrite)
 );
 
 rv_regfile u_regfile (
@@ -122,11 +133,15 @@ dffr_sync_flush #(.DW(DW)) u_idex_b_r          (.clk(clk), .rst_n(rst_n), .flush
 dffr_sync_flush #(.DW(4))  u_idex_alucontrol_r (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din({ifid_i[30], ifid_i[14:12]}), .dout(idex_alucontrol));
 dffr_sync_flush #(.DW(DW)) u_idex_imm_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(imm),                         .dout(idex_imm));
 dffr_sync_flush #(.DW(DW)) u_idex_pcs_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(pc_plus_shimm),               .dout(idex_pc_plus_shimm));
+dffr_sync_flush #(.DW(DW)) u_idex_pc4_r        (.clk(clk), .rst_n(rst_n), .flush(id_flush), .din(pc_plus_4),                   .dout(idex_pc_plus_4));
 
 // Control registers. These are also flushed on hazard_flag to insert NOP bubbles
 dffr_sync_flush #(.DW(1)) u_idex_regwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(regwrite),     .dout(idex_regwrite));
 dffr_sync_flush #(.DW(1)) u_idex_memtoreg_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memtoreg),     .dout(idex_memtoreg));
 dffr_sync_flush #(.DW(1)) u_idex_branch_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(branch),       .dout(idex_branch));
+dffr_sync_flush #(.DW(1)) u_idex_jump_r         (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(jump),         .dout(idex_jump));
+dffr_sync_flush #(.DW(1)) u_idex_jalr_r         (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(jalr),         .dout(idex_jalr));
+dffr_sync_flush #(.DW(2)) u_idex_result_src_r   (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(result_src),   .dout(idex_result_src));
 dffr_sync_flush #(.DW(1)) u_idex_memread_r      (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memread),      .dout(idex_memread));
 dffr_sync_flush #(.DW(1)) u_idex_memwrite_r     (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(memwrite),     .dout(idex_memwrite));
 dffr_sync_flush #(.DW(1)) u_idex_alusrc_r       (.clk(clk), .rst_n(rst_n), .flush(id_flush | hazard_flag), .din(alusrc),       .dout(idex_alusrc));

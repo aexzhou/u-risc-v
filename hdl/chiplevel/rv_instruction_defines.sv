@@ -4,7 +4,7 @@
 `define RV32I_I_JALR_OPCODE     7'b1100111
 `define RV32I_S_OPCODE          7'b0100011
 `define RV32I_B_OPCODE          7'b1100011
-`define RV32I_J_OPCODE          7'b1100111
+`define RV32I_J_OPCODE          7'b1101111
 `define RV32I_U_LUI_OPCODE      7'b0110111
 `define RV32I_U_AUIPC_OPCODE    7'b0010111
 

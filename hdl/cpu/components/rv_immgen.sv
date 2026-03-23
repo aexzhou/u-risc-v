@@ -43,7 +43,8 @@ always_comb begin
         7'b0000011: imm_out = DW'(signed'(in[31:20]));                                        // I-Type load
         7'b0100011: imm_out = DW'(signed'({ in[31:25], in[11:7] }));                          // S-Type
         7'b1100011: imm_out = DW'(signed'({ in[31], in[7], in[30:25], in[11:8], 1'b0 }));    // B-Type
-        7'b0110111: imm_out = DW'(signed'({ in[31:12], 12'b0 }));                             // U-Type
+        7'b0110111: imm_out = DW'(signed'({ in[31:12], 12'b0 }));                             // U-Type LUI
+        7'b0010111: imm_out = DW'(signed'({ in[31:12], 12'b0 }));                             // U-Type AUIPC
         default:    imm_out = '0;
     endcase
 end

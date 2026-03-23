@@ -7,6 +7,7 @@ module rv_exu #(
     // ID/EX pipeline register inputs (from IDU)
     input  logic [DW-1:0]  idex_imm,
     input  logic [DW-1:0]  idex_pc_plus_shimm,
+    input  logic [DW-1:0]  idex_pc_plus_4,
     input  logic [DW-1:0]  idex_a,
     input  logic [DW-1:0]  idex_b,
     input  logic [4:0]     idex_rs1,
@@ -15,6 +16,9 @@ module rv_exu #(
     input  logic           idex_regwrite,
     input  logic           idex_memtoreg,
     input  logic           idex_branch,
+    input  logic           idex_jump,
+    input  logic           idex_jalr,
+    input  logic [1:0]     idex_result_src,
     input  logic           idex_memread,
     input  logic           idex_memwrite,
     input  logic           idex_alusrc,
@@ -53,8 +57,13 @@ logic branch_taken;
 logic [2:0] funct3;
 assign funct3 = idex_alucontrol[2:0];
 
-assign pc_src = idex_branch & branch_taken;
-assign pc_branch_target = idex_pc_plus_shimm;
+// PC override from a taken branch, or unconditional jump
+assign pc_src = (idex_branch & branch_taken) | idex_jump;
+
+// Jump target calculation
+// JALR uses ALU result (rs1+imm) with bit 0 cleared
+// Branches and JAL use PC-relative target
+assign pc_branch_target = idex_jalr ? {alu_out[DW-1:1], 1'b0} : idex_pc_plus_shimm;
 
 // Forward MUX for Rs1
 always_comb begin
@@ -110,6 +119,24 @@ always_comb begin
     endcase
 end
 
+// Selects which value gets written to rd (dest. register)
+
+// Rd result mux:
+// 2'b00: ALU output (R-type, I-type ALU, load addr...)
+// 2'b01: Immediate (LUI)
+// 2'b10: PC + imm (AUIPC)
+// 2'b11: PC + 4 (JAL/JALR link address)
+logic [DW-1:0] ex_result;
+always_comb begin
+    case (idex_result_src)
+        2'b00:   ex_result = alu_out;
+        2'b01:   ex_result = idex_imm;
+        2'b10:   ex_result = idex_pc_plus_shimm;
+        2'b11:   ex_result = idex_pc_plus_4;
+        default: ex_result = {DW{1'bx}};
+    endcase
+end
+
 rv_fwdu u_fwdu (
     .idex_rs1     (idex_rs1),
     .idex_rs2     (idex_rs2),
@@ -122,7 +149,7 @@ rv_fwdu u_fwdu (
 );
 
 // EX/MEM pipeline registers
-dffr #(.DW(DW)) u_exm_aluout_r  (.clk(clk), .rst_n(rst_n), .din(alu_out),       .dout(exm_aluout));
+dffr #(.DW(DW)) u_exm_aluout_r  (.clk(clk), .rst_n(rst_n), .din(ex_result),     .dout(exm_aluout));
 dffr #(.DW(DW)) u_exm_muxb_r    (.clk(clk), .rst_n(rst_n), .din(idex_muxb),     .dout(exm_muxb));
 dffr #(.DW(5))  u_exm_rd_r      (.clk(clk), .rst_n(rst_n), .din(idex_rd),       .dout(exm_rd));
 dffr #(.DW(1))  u_exm_regwrite_r(.clk(clk), .rst_n(rst_n), .din(idex_regwrite), .dout(exm_regwrite));
