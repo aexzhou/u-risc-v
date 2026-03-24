@@ -50,7 +50,7 @@ logic [31:0] imem_out;
 sram #(
     .DEPTH(IMEM_DEPTH), 
     .DATA_WIDTH(32),
-    .ADDR_WIDTH(64)
+    .ADDR_WIDTH(32)
 ) u_imem (
     .clk        (clk),
     .addr       (pc_out),

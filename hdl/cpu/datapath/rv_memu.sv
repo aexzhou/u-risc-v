@@ -25,7 +25,7 @@ module rv_memu #(
 sram #(
     .DEPTH(DMEM_DEPTH), 
     .DATA_WIDTH(DW),
-    .ADDR_WIDTH(64)
+    .ADDR_WIDTH(32)
 ) u_dmem (
     .clk        (clk),
     .addr       (exm_aluout),

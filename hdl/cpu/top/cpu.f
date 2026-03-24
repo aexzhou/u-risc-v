@@ -11,6 +11,8 @@ ${COMMON_DIR}/sram.sv
 
 // Types package
 ${CHIPLEVEL_DIR}/rv_alu_types.sv
+${CHIPLEVEL_DIR}/rv_instruction_defines.sv
+${CHIPLEVEL_DIR}/rv_defines.sv
 
 // Components
 ${CPU_DIR}/components/rv_alu_ctrl.sv

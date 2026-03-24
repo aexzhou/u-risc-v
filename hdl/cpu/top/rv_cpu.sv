@@ -26,9 +26,11 @@ logic [DW-1:0] pc_branch_target;
 logic          pc_write, pc_src, ifid_write, if_flush, id_flush;
 
 // IDU -> EXU (ID/EX pipeline registers)
-logic [DW-1:0] idex_imm, idex_pc_plus_shimm, idex_a, idex_b;
+logic [DW-1:0] idex_imm, idex_pc_plus_shimm, idex_pc_plus_4, idex_a, idex_b;
 logic [4:0]    idex_rs1, idex_rs2, idex_rd;
 logic          idex_regwrite, idex_memtoreg, idex_branch;
+logic          idex_jump, idex_jalr;
+logic [1:0]    idex_result_src;
 logic          idex_memread, idex_memwrite, idex_alusrc;
 logic [1:0]    idex_alu_op;
 logic [3:0]    idex_alucontrol;
@@ -79,6 +81,7 @@ rv_idu #(.DW(DW)) u_idu (
     .ifid_write     (ifid_write),
     .idex_imm       (idex_imm),
     .idex_pc_plus_shimm(idex_pc_plus_shimm),
+    .idex_pc_plus_4 (idex_pc_plus_4),
     .idex_a         (idex_a),
     .idex_b         (idex_b),
     .idex_rs1       (idex_rs1),
@@ -87,6 +90,9 @@ rv_idu #(.DW(DW)) u_idu (
     .idex_regwrite  (idex_regwrite),
     .idex_memtoreg  (idex_memtoreg),
     .idex_branch    (idex_branch),
+    .idex_jump      (idex_jump),
+    .idex_jalr      (idex_jalr),
+    .idex_result_src(idex_result_src),
     .idex_memread   (idex_memread),
     .idex_memwrite  (idex_memwrite),
     .idex_alusrc    (idex_alusrc),
@@ -99,6 +105,7 @@ rv_exu #(.DW(DW)) u_exu (
     .rst_n          (rst_n),
     .idex_imm       (idex_imm),
     .idex_pc_plus_shimm(idex_pc_plus_shimm),
+    .idex_pc_plus_4 (idex_pc_plus_4),
     .idex_a         (idex_a),
     .idex_b         (idex_b),
     .idex_rs1       (idex_rs1),
@@ -107,6 +114,9 @@ rv_exu #(.DW(DW)) u_exu (
     .idex_regwrite  (idex_regwrite),
     .idex_memtoreg  (idex_memtoreg),
     .idex_branch    (idex_branch),
+    .idex_jump      (idex_jump),
+    .idex_jalr      (idex_jalr),
+    .idex_result_src(idex_result_src),
     .idex_memread   (idex_memread),
     .idex_memwrite  (idex_memwrite),
     .idex_alusrc    (idex_alusrc),
