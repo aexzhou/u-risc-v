@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+# clean - remove test output directories from rundir/
+#
+# Usage:
+#   clean <testname>       remove rundir/<testname>/
+#   clean all | clean a    remove the entire rundir/
+
+import os
+import shutil
+import sys
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root  = os.path.dirname(script_dir)
+rundir     = os.path.join(repo_root, 'rundir')
+
+if len(sys.argv) < 2:
+    sys.exit("Usage: clean <testname>   or   clean all|a")
+
+target = sys.argv[1]
+
+if target in ('all', 'a'):
+    if not os.path.isdir(rundir):
+        print("Nothing to clean — rundir does not exist.")
+    else:
+        shutil.rmtree(rundir)
+        print(f"Removed {rundir}")
+else:
+    target_dir = os.path.join(rundir, target)
+    if not os.path.isdir(target_dir):
+        sys.exit(f"ERROR: {target_dir} does not exist")
+    shutil.rmtree(target_dir)
+    print(f"Removed {target_dir}")
