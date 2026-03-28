@@ -1,6 +1,6 @@
 [submodule "uvm"]
 	path = uvm
 	url = https://github.com/nitronis/UVM.git
-[submodule "models/cpu/champsim"]
-	path = models/cpu/champsim
+[submodule "models/champsim/champsim"]
+	path = models/champsim/champsim
 	url = https://github.com/ChampSim/ChampSim.git

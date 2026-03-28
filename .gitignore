@@ -8,7 +8,7 @@ tags
 *__pycache__/
 
 # ChampSim build artifacts
-models/cpu/champsim/bin/
-models/cpu/champsim/vcpkg_installed/
-models/cpu/champsim/traces/
+models/champsim/champsim/bin/
+models/champsim/champsim/vcpkg_installed/
+models/champsim/champsim/traces/
 *.csconfig/

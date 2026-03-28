@@ -16,7 +16,7 @@ _build_cs_completions() {
     script_abs="$(realpath "$script_abs" 2>/dev/null || readlink -f "$script_abs" 2>/dev/null || echo "$script_abs")"
     local repo_root
     repo_root="$(dirname "$(dirname "$script_abs")")"
-    local config_dir="$repo_root/models/cpu/configs"
+    local config_dir="$repo_root/models/champsim/configs"
 
     if [[ -d "$config_dir" ]]; then
         local configs

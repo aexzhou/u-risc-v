@@ -15,9 +15,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CHAMPSIM_DIR="$REPO_ROOT/models/cpu/champsim"
+CHAMPSIM_DIR="$REPO_ROOT/models/champsim/champsim"
 BIN_DIR="$CHAMPSIM_DIR/bin"
-CONFIG_DIR="$REPO_ROOT/models/cpu/configs"
+CONFIG_DIR="$REPO_ROOT/models/champsim/configs"
 TRACE_DIR="${CHAMPSIM_TRACE_DIR:-/champsim/traces}"
 
 usage() {
@@ -25,7 +25,7 @@ usage() {
 Usage: run_cs [OPTIONS] <bin_name> <trace>
 
 Arguments:
-  bin_name    Name of a binary under models/cpu/champsim/bin/
+  bin_name    Name of a binary under models/champsim/champsim/bin/
   trace       Trace file name (looked up in $CHAMPSIM_TRACE_DIR)
 
 Options:

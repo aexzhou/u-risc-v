@@ -20,14 +20,14 @@ and see how they affect performance — without writing or compiling any real pr
 ### 1. Build
 
 ```bash
-./models/cpu/setup.sh
+./models/champsim/setup.sh
 ```
 
 This initializes submodules, installs dependencies, and compiles ChampSim with the
 baseline config. To build with a different config:
 
 ```bash
-./models/cpu/setup.sh models/cpu/configs/my_config.json
+./models/champsim/setup.sh models/champsim/configs/my_config.json
 ```
 
 ### 2. Get a trace
@@ -38,15 +38,15 @@ https://utexas.app.box.com/s/2k54kp8zvrqdfaa8cdhfquvcxwh7yn85/folder/13280459856
 These are SPEC CPU 2017 workloads recorded as `.champsimtrace.xz` files (xz-compressed,
 ChampSim decompresses on the fly). Each file is a few hundred MB. Pick any one to start.
 
-Place trace files in `models/cpu/champsim/traces/`.
+Place trace files in `models/champsim/champsim/traces/`.
 
 ### 3. Run
 
 ```bash
-models/cpu/champsim/bin/uriscv_baseline \
+models/champsim/champsim/bin/uriscv_baseline \
   --warmup-instructions 1000000 \
   --simulation-instructions 5000000 \
-  models/cpu/champsim/traces/gcc_13B.trace.champsimtrace.xz
+  models/champsim/champsim/traces/gcc_13B.trace.champsimtrace.xz
 ```
 
 - `--warmup-instructions`: number of instructions to warm up caches/branch predictors
@@ -58,11 +58,11 @@ Output goes to stdout — you'll see periodic heartbeat stats, then a final summ
 IPC, cache stats, and branch prediction accuracy. To get machine-readable output:
 
 ```bash
-models/cpu/champsim/bin/uriscv_baseline \
+models/champsim/champsim/bin/uriscv_baseline \
   --warmup-instructions 1000000 \
   --simulation-instructions 5000000 \
   --json results.json \
-  models/cpu/champsim/traces/gcc_13B.trace.champsimtrace.xz
+  models/champsim/champsim/traces/gcc_13B.trace.champsimtrace.xz
 ```
 
 ## Baseline Config
@@ -79,7 +79,7 @@ models/cpu/champsim/bin/uriscv_baseline \
 
 1. Copy `configs/uriscv_baseline.json` to a new file
 2. Modify parameters (pipeline width, cache sizes, branch predictor, etc.)
-3. Rebuild: `./models/cpu/setup.sh models/cpu/configs/my_config.json`
+3. Rebuild: `./models/champsim/setup.sh models/champsim/configs/my_config.json`
 
 Available branch predictors: `bimodal`, `gshare`, `perceptron`, `hashed_perceptron`
 Available prefetchers: `no`, `next_line`, `ip_stride`, `spp_dev`, `va_ampm_lite`

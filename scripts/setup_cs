@@ -7,14 +7,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CHAMPSIM_DIR="$REPO_ROOT/models/cpu/champsim"
-CONFIG="${1:-$REPO_ROOT/models/cpu/configs/uriscv_baseline.json}"
+CHAMPSIM_DIR="$REPO_ROOT/models/champsim/champsim"
+CONFIG="${1:-$REPO_ROOT/models/champsim/configs/uriscv_baseline.json}"
 
 echo "=== uriscv ChampSim Setup ==="
 
 # 1. Initialize submodules (ChampSim + its vcpkg)
 echo "[1/4] Initializing submodules..."
-git -C "$REPO_ROOT" submodule update --init --recursive models/cpu/champsim
+git -C "$REPO_ROOT" submodule update --init --recursive models/champsim/champsim
 
 # 2. Bootstrap vcpkg
 echo "[2/4] Bootstrapping vcpkg..."

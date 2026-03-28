@@ -15,7 +15,7 @@ _run_cs_completions() {
     local repo_root
     repo_root="$(dirname "$(dirname "$script_abs")")"
 
-    local bin_dir="$repo_root/models/cpu/champsim/bin"
+    local bin_dir="$repo_root/models/champsim/champsim/bin"
     local trace_dir="${CHAMPSIM_TRACE_DIR:-/champsim/traces}"
 
     # Complete option values
