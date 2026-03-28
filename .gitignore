@@ -4,3 +4,11 @@
 work/
 tags
 .vscode/
+
+*__pycache__/
+
+# ChampSim build artifacts
+models/cpu/champsim/bin/
+models/cpu/champsim/vcpkg_installed/
+models/cpu/champsim/traces/
+*.csconfig/

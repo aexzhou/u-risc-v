@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+#
+# Run a ChampSim binary against a trace file.
+# If the binary doesn't exist, build it from the matching config first.
+#
+# Usage: run_cs [OPTIONS] <bin_name> <trace>
+#   Options:
+#     -w, --warmup-instructions N    Warmup instructions (default: 1000000)
+#     -i, --simulation-instructions N Simulation instructions (default: 10000000)
+#     --hide-heartbeat               Hide heartbeat output
+#     --json FILE                    Write JSON output to FILE
+#     -h, --help                     Show this help
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CHAMPSIM_DIR="$REPO_ROOT/models/cpu/champsim"
+BIN_DIR="$CHAMPSIM_DIR/bin"
+CONFIG_DIR="$REPO_ROOT/models/cpu/configs"
+TRACE_DIR="${CHAMPSIM_TRACE_DIR:-/champsim/traces}"
+
+usage() {
+    cat <<'EOF'
+Usage: run_cs [OPTIONS] <bin_name> <trace>
+
+Arguments:
+  bin_name    Name of a binary under models/cpu/champsim/bin/
+  trace       Trace file name (looked up in $CHAMPSIM_TRACE_DIR)
+
+Options:
+  -w, --warmup-instructions N     Warmup instructions (default: 1000000)
+  -i, --simulation-instructions N Simulation instructions (default: 10000000)
+  --hide-heartbeat                Hide heartbeat output
+  --json FILE                     Write JSON output to FILE
+  -h, --help                      Show this help
+EOF
+    exit 0
+}
+
+# Defaults
+warmup=200000
+sim_instr=1000000
+extra_args=()
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage ;;
+        -w|--warmup-instructions) warmup="$2"; shift 2 ;;
+        -i|--simulation-instructions) sim_instr="$2"; shift 2 ;;
+        --hide-heartbeat) extra_args+=(--hide-heartbeat); shift ;;
+        --json) extra_args+=(--json "$2"); shift 2 ;;
+        -*) echo "Error: unknown option '$1'" >&2; exit 1 ;;
+        *)  break ;;
+    esac
+done
+
+if [[ $# -lt 2 ]]; then
+    echo "Error: expected <bin_name> <trace>" >&2
+    echo "Run 'run_cs --help' for usage." >&2
+    exit 1
+fi
+
+bin_name="$1"
+trace_arg="$2"
+
+# Resolve trace path: use as-is if it's a path, otherwise look up in TRACE_DIR
+if [[ "$trace_arg" == */* ]]; then
+    trace_path="$trace_arg"
+else
+    trace_path="$TRACE_DIR/$trace_arg"
+fi
+
+if [[ ! -f "$trace_path" ]]; then
+    echo "Error: trace not found: $trace_path" >&2
+    exit 1
+fi
+
+# Build if binary doesn't exist
+bin_path="$BIN_DIR/$bin_name"
+if [[ ! -x "$bin_path" ]]; then
+    config_path="$CONFIG_DIR/${bin_name}.json"
+    if [[ ! -f "$config_path" ]]; then
+        echo "Error: binary '$bin_name' not found and no config at $config_path" >&2
+        exit 1
+    fi
+    echo "Binary '$bin_name' not found, building from $config_path ..."
+    "$SCRIPT_DIR/setup_cs" "$config_path"
+fi
+
+# Set up log directory and file
+log_dir="$REPO_ROOT/rundir/champsim"
+mkdir -p "$log_dir"
+log_file="$log_dir/${bin_name}.log"
+
+echo "=== Running ChampSim ==="
+echo "  Binary: $bin_path"
+echo "  Trace:  $trace_path"
+echo "  Warmup: $warmup   Sim: $sim_instr"
+echo "  Log:    $log_file"
+echo ""
+
+total_instr=$(( warmup + sim_instr ))
+
+stdbuf -oL "$bin_path" \
+    --warmup-instructions "$warmup" \
+    --simulation-instructions "$sim_instr" \
+    ${extra_args[@]+"${extra_args[@]}"} \
+    "$trace_path" 2>&1 | python3 "$SCRIPT_DIR/cs_progress.py" "$total_instr" | tee "$log_file"
