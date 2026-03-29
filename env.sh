@@ -28,4 +28,9 @@ _C_RESET='\[\e[00m\]'
 _C_RESET_SUB='\001\e[00m\002'
 PS1="${_C_GREEN}"'\u@\h'"${_C_RESET}"':'"${_C_BLUE}"'\w'"${_C_RESET}"'$( b=$(_uriscv_git_branch); [ -n "$b" ] && printf " '"${_C_YELLOW}"'(%s)'"${_C_RESET_SUB}"'" "$b") \$ '
 
+export CHAMPSIM_TRACE_DIR='/champsim/traces'
+
+
+
+
 echo "uriscv env loaded  (root: $_URISCV_ROOT)"

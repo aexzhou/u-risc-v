@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Setup script for ChampSim-based CPU modeling.
+# Initializes submodules, installs dependencies, configures, and builds.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CHAMPSIM_DIR="$REPO_ROOT/models/champsim/champsim"
+CONFIG="${1:-$REPO_ROOT/models/champsim/configs/uriscv_baseline.json}"
+
+echo "=== uriscv ChampSim Setup ==="
+
+# 1. Initialize submodules (ChampSim + its vcpkg)
+echo "[1/4] Initializing submodules..."
+git -C "$REPO_ROOT" submodule update --init --recursive models/champsim/champsim
+
+# 2. Bootstrap vcpkg
+echo "[2/4] Bootstrapping vcpkg..."
+if [ ! -x "$CHAMPSIM_DIR/vcpkg/vcpkg" ]; then
+    "$CHAMPSIM_DIR/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+fi
+
+# 3. Install dependencies
+echo "[3/4] Installing ChampSim dependencies via vcpkg..."
+"$CHAMPSIM_DIR/vcpkg/vcpkg" install --x-manifest-root="$CHAMPSIM_DIR"
+
+# 4. Configure and build (must run from ChampSim dir for correct relative paths)
+echo "[4/4] Configuring and building ChampSim..."
+CONFIG="$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")"
+echo "  Config: $CONFIG"
+pushd "$CHAMPSIM_DIR" > /dev/null
+python3 config.sh "$CONFIG"
+make -j"$(nproc)"
+popd > /dev/null
+
+echo ""
+echo "=== Build complete ==="
+echo "Binary: $CHAMPSIM_DIR/bin/$(python3 -c "import json; print(json.load(open('$CONFIG'))['executable_name'])")"
