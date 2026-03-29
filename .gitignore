@@ -6,9 +6,13 @@ tags
 .vscode/
 
 *__pycache__/
+.venv/
 
 # ChampSim build artifacts
 models/champsim/champsim/bin/
 models/champsim/champsim/vcpkg_installed/
 models/champsim/champsim/traces/
 *.csconfig/
+
+# gem5 output
+m5out/

@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+#
+# Install gem5 systemwide and configure Python paths for editor support.
+#
+# What this script does:
+#   1. Installs build dependencies (apt)
+#   2. Clones gem5 to /opt/gem5 (if not already present)
+#   3. Builds the RISC-V target (gem5.opt)
+#   4. Symlinks gem5 binary into /usr/local/bin
+#   5. Installs a .pth file so system Python can resolve gem5/m5 imports
+#   6. Symlinks SimObject .py files into m5/objects/ for editor/LSP support
+#
+# Usage: scripts/setup_gem5
+#
+set -euo pipefail
+
+GEM5_DIR="/opt/gem5"
+GEM5_REPO="https://github.com/gem5/gem5.git"
+GEM5_BUILD="$GEM5_DIR/build/RISCV/gem5.opt"
+GEM5_LINK="/usr/local/bin/gem5"
+JOBS="$(nproc)"
+
+SITE_PACKAGES="$(python3 -c "import site; print(site.getsitepackages()[0])")"
+PTH_FILE="$SITE_PACKAGES/gem5.pth"
+OBJECTS_DIR="$GEM5_DIR/src/python/m5/objects"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+info()  { echo "==> $*"; }
+warn()  { echo "WARNING: $*" >&2; }
+
+need_sudo() {
+    if [[ $EUID -ne 0 ]]; then
+        echo "This script requires sudo privileges."
+        sudo -v || { echo "Error: sudo required." >&2; exit 1; }
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 1. Build dependencies
+# ---------------------------------------------------------------------------
+install_deps() {
+    info "Installing build dependencies..."
+    sudo apt install -y \
+        build-essential scons python3-dev zlib1g-dev \
+        libprotobuf-dev protobuf-compiler libgoogle-perftools-dev \
+        libhdf5-dev libpng-dev
+}
+
+# ---------------------------------------------------------------------------
+# 2. Clone gem5
+# ---------------------------------------------------------------------------
+clone_gem5() {
+    if [[ -d "$GEM5_DIR/.git" ]]; then
+        info "gem5 already cloned at $GEM5_DIR, skipping."
+    else
+        info "Cloning gem5 to $GEM5_DIR..."
+        sudo git clone "$GEM5_REPO" "$GEM5_DIR"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 3. Build RISC-V target
+# ---------------------------------------------------------------------------
+build_gem5() {
+    if [[ -x "$GEM5_BUILD" ]]; then
+        info "gem5 RISC-V binary already exists at $GEM5_BUILD, skipping build."
+        info "  (delete it and re-run to force a rebuild)"
+    else
+        info "Building gem5 RISC-V target with $JOBS jobs (this takes a while)..."
+        cd "$GEM5_DIR"
+        sudo scons "build/RISCV/gem5.opt" -j"$JOBS"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 4. Symlink binary into PATH
+# ---------------------------------------------------------------------------
+link_binary() {
+    info "Symlinking $GEM5_BUILD -> $GEM5_LINK"
+    sudo ln -sf "$GEM5_BUILD" "$GEM5_LINK"
+}
+
+# ---------------------------------------------------------------------------
+# 5. Install .pth file for system Python
+# ---------------------------------------------------------------------------
+install_pth() {
+    info "Installing $PTH_FILE for Python import resolution..."
+    sudo tee "$PTH_FILE" > /dev/null <<EOF
+/opt/gem5/src/python
+/opt/gem5/build/RISCV/python
+EOF
+    # Verify
+    if python3 -c "import gem5" 2>/dev/null; then
+        info "Python can resolve 'import gem5' ✓"
+    else
+        warn "Python still cannot resolve gem5 — check $PTH_FILE"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 6. Symlink SimObject .py files for editor/LSP support
+# ---------------------------------------------------------------------------
+# gem5's m5.objects namespace is built dynamically at runtime by an embedded
+# importer. Static analysis tools (Pylance, Pyright) can't follow it.
+# We symlink the actual SimObject .py files into m5/objects/ so editors
+# can resolve imports like "from m5.objects.BranchPredictor import ...".
+# ---------------------------------------------------------------------------
+link_simobjects() {
+    info "Symlinking SimObject .py files into $OBJECTS_DIR..."
+    # Collect all SimObject .py files, deduplicate by basename (first wins),
+    # then batch all ln commands into a single sudo bash call.
+    local tmp
+    tmp="$(mktemp)"
+    find "$GEM5_DIR/src" -name "*.py" \
+        -not -path "*/python/*" \
+        -not -path "*__pycache__*" \
+        -not -path "*/tests/*" \
+        -not -name "SConscript" \
+        -not -name "SConsopts" | while read -r path; do
+        local base
+        base="$(basename "$path")"
+        echo "$base $path"
+    done | awk '!seen[$1]++ { print "ln -sf \x27" $2 "\x27 \x27'"$OBJECTS_DIR"'/" $1 "\x27" }' > "$tmp"
+    local count
+    count="$(wc -l < "$tmp")"
+    sudo bash "$tmp"
+    rm -f "$tmp"
+    info "Linked $count SimObject files."
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+need_sudo
+install_deps
+clone_gem5
+build_gem5
+link_binary
+install_pth
+link_simobjects
+
+echo ""
+echo "========================================"
+echo "  gem5 setup complete"
+echo "========================================"
+echo "  Binary : $(command -v gem5)"
+echo "  Version: $(gem5 --version 2>/dev/null || echo 'unknown')"
+echo "  .pth   : $PTH_FILE"
+echo ""
+echo "  Reload VSCode to pick up import paths."
+echo "========================================"

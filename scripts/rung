@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#
+# Run a gem5 simulation using a config from models/gem5/cpu/.
+#
+# Usage: rung <config_name> [gem5-options...]
+#   Options:
+#     --binary FILE       Path to a statically-linked RISC-V ELF binary
+#     --resource NAME     gem5-resources identifier (e.g. riscv-hello)
+#     -o, --outdir DIR    gem5 output directory (default: rundir/gem5/<config_name>)
+#     -h, --help          Show this help
+#
+# Tab completion: config names from models/gem5/cpu/*.py
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_DIR="$REPO_ROOT/models/gem5/cpu"
+GEM5_BIN="$(command -v gem5 2>/dev/null || echo "")"
+
+usage() {
+    cat <<'EOF'
+Usage: rung <config_name> [OPTIONS]
+
+Arguments:
+  config_name    Name of a config under models/gem5/cpu/ (without .py)
+
+Options:
+  --binary FILE       Path to a statically-linked RISC-V ELF binary
+  --resource NAME     gem5-resources identifier (e.g. riscv-hello)
+  -o, --outdir DIR    gem5 output directory (default: rundir/gem5/<config_name>)
+  -h, --help          Show this help
+
+Examples:
+  rung uriscv_baseline --resource riscv-hello
+  rung uriscv_baseline --binary path/to/hello.elf
+EOF
+    exit 0
+}
+
+if [[ $# -lt 1 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    usage
+fi
+
+# Require gem5 on PATH
+if [[ -z "$GEM5_BIN" ]]; then
+    echo "Error: gem5 not found on PATH." >&2
+    echo "Install gem5 and symlink to /usr/local/bin/gem5 (see models/gem5/README.md)." >&2
+    exit 1
+fi
+
+config_name="$1"
+shift
+
+# Resolve config file
+config_path="$CONFIG_DIR/${config_name}.py"
+if [[ ! -f "$config_path" ]]; then
+    echo "Error: config not found: $config_path" >&2
+    echo "Available configs:" >&2
+    find "$CONFIG_DIR" -name '*.py' -printf "  %f\n" 2>/dev/null | sed 's/\.py$//' >&2
+    exit 1
+fi
+
+# Parse our options, pass the rest through to the gem5 config script
+outdir=""
+passthrough=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o|--outdir)
+            outdir="$2"; shift 2 ;;
+        *)
+            passthrough+=("$1"); shift ;;
+    esac
+done
+
+# Default output directory
+if [[ -z "$outdir" ]]; then
+    outdir="$REPO_ROOT/rundir/gem5/$config_name"
+fi
+mkdir -p "$outdir"
+
+echo "=== gem5 simulation ==="
+echo "  Config: $config_path"
+echo "  Output: $outdir"
+echo ""
+
+exec "$GEM5_BIN" --outdir="$outdir" "$config_path" "${passthrough[@]}"
