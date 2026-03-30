@@ -16,3 +16,6 @@ models/champsim/champsim/traces/
 
 # gem5 output
 m5out/
+
+# read the docs
+docs/_build/
