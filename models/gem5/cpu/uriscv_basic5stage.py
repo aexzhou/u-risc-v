@@ -116,6 +116,11 @@ processor = BaseCPUProcessor(
     cores=[BaseCPUCore(core=core, isa=ISA.RISCV)]
 )
 
+# Set RV32 after processor init to avoid creatThreads() from overwriting
+for wrapped_core in processor.get_cores():
+    for isa in wrapped_core.core.isa:
+        isa.riscv_type = "RV32"
+
 # ---------------------------------------------------------------------------
 # Cache hierarchy
 # ---------------------------------------------------------------------------

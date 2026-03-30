@@ -19,13 +19,14 @@ from m5.objects.BranchPredictor import (
     SimpleBTB,
     ReturnAddrStack,
 )
-from m5.objects.RiscvCPU import RiscvMinorCPU
+from m5.objects.RiscvCPU import RiscvO3CPU
+from m5.objects.IQUnit import IQUnit
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-parser = argparse.ArgumentParser(description="uriscv basic 5 stage gem5 config")
+parser = argparse.ArgumentParser(description="uriscv OoO CPU gem5 config")
 parser.add_argument(
     "--binary",
     type=str,
@@ -47,55 +48,65 @@ requires(isa_required=ISA.RISCV)
 # ---------------------------------------------------------------------------
 # All widths are constrained to 1 to model single-issue
 
-class UriscvMinorCPU(RiscvMinorCPU):
-    """Single-issue in-order RISC-V core"""
+class uRiscvO3CPU(RiscvO3CPU):
+    # only fetch 2 instructions at a time
+    fetchWidth = 2
+    decodeWidth = 2
+    renameWidth = 2
+    dispatchWidth = 2
+    issueWidth = 2
+    commitWidth = 2
 
-    # # IF
-    # fetch1LineSnapWidth = 0          # no line-snap alignmeant constraint
-    # fetch1LineWidth = 0              # fetch full cache line
-    # fetch1FetchLimit = 1             # fetch 1 instruction per cycle
-    # fetch1ToFetch2ForwardDelay = 1   # 1-cycle IF->ID forward latency
-    # fetch1ToFetch2BackwardDelay = 1  # branch redirect penalty (cycles)
+    # Fetch 
+    fetchBufferSize = 32 # bytes
+    fetchQueueSize = 16 
+    
+    # Decode
+    
+    # Rename
+    numPhysIntRegs = 128 # 32 arch X0-31 regs + 96 rename regs
+    numPhysFloatRegs = 128 # WIP on rtl side
+    
+    # Issue
+    instQueues = [IQUnit(numEntries=32)] # reservation stations
+    numROBEntries = 64
+    
+    # Commit
+    
+    # ----- end of pipeline ---- #
+    
+    # Memory ordering
+    LQEntries = 16
+    SQEntries = 16
 
-    # # ID
-    # fetch2InputBufferSize = 1
-    # fetch2ToDecodeForwardDelay = 1   # 1-cycle fetch2->decode
-    # decodeInputBufferSize = 1
-    # decodeToExecuteForwardDelay = 1  # 1-cycle ID->EX
-    # decodeInputWidth = 1             # decode 1 instruction per cycle
-
-    # # EX + MEM + WB
-    # executeInputWidth = 1            # issue 1 instruction per cycle
-    # executeIssueLimit = 1            # single issue
-    # executeCommitLimit = 1           # retire 1 per cycle
-    # executeInputBufferSize = 1
-    # executeCycleInput = True
-    # executeBranchDelay = 1           # 1 extra cycle after branch resolves
-
-    # # Branch predictor
-    # # gem5 MinorCPU requires a branch predictor
-    # # This configures a simple, static not-taken branching beahviour
-    # branchPred = BranchPredictor(
-    #     conditionalBranchPred=LocalBP(
-    #         localPredictorSize=64,
-    #         localCtrBits=2,
-    #     ),
-    #     btb=SimpleBTB(numEntries=16),
-    #     ras=ReturnAddrStack(numEntries=4),
-    # )
+    # Branching   
+    branchPred = BranchPredictor(
+        conditionalBranchPred=LocalBP(
+            localPredictorSize=2048,
+            localCtrBits=2,
+        ),
+        btb=SimpleBTB(numEntries=256),
+        ras=ReturnAddrStack(numEntries=16)
+    )
+    
 
 
 # ---------------------------------------------------------------------------
 # Processor wrapper (1 core)
 # ---------------------------------------------------------------------------
 
-core = UriscvMinorCPU(cpu_id=0)
+core = uRiscvO3CPU(cpu_id=0)
 
 from gem5.components.processors.base_cpu_core import BaseCPUCore
 
 processor = BaseCPUProcessor(
     cores=[BaseCPUCore(core=core, isa=ISA.RISCV)]
 )
+
+# Set RV32 after processor init to avoid creatThreads() from overwriting
+for wrapped_core in processor.get_cores():
+    for isa in wrapped_core.core.isa:
+        isa.riscv_type = "RV32"
 
 # ---------------------------------------------------------------------------
 # Cache hierarchy
@@ -137,21 +148,6 @@ else:
 
 
 
-
-
-
-
-# ---------------------------------------------------------------------------
-# Workload/binary
-# ---------------------------------------------------------------------------
-
-if args.binary:
-    board.set_se_binary_workload(BinaryResource(args.binary))
-elif args.resource:
-    board.set_se_binary_workload(obtain_resource(args.resource))
-else:
-    board.set_se_binary_workload(obtain_resource("riscv-hello")) # Default gem5 smoke test
-
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
@@ -160,7 +156,7 @@ simulator = Simulator(board=board)
 print("=" * 60)
 print(f"{__file__} --- gem5 SE simulation")
 print("=" * 60)
-print(f"  CPU model : MinorCPU (single-issue, in-order)")
+print(f"  CPU model : O3CPU (2-wide, out-of-order)")
 print(f"  ISA       : RISC-V")
 print(f"  Clock     : 100 MHz")
 print(f"  L1I / L1D : 4 KiB / 4 KiB")

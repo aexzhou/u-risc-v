@@ -6,6 +6,7 @@
 #   Options:
 #     --binary FILE       Path to a statically-linked RISC-V ELF binary
 #     --resource NAME     gem5-resources identifier (e.g. riscv-hello)
+#     --asm NAME          Assemble tb/cpu/asm/tests/<NAME>.s and use the ELF
 #     -o, --outdir DIR    gem5 output directory (default: rundir/gem5/<config_name>)
 #     -h, --help          Show this help
 #
@@ -16,6 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_DIR="$REPO_ROOT/models/gem5/cpu"
+ASM_DIR="$REPO_ROOT/tb/cpu/asm/tests"
 GEM5_BIN="$(command -v gem5 2>/dev/null || echo "")"
 
 usage() {
@@ -28,12 +30,14 @@ Arguments:
 Options:
   --binary FILE       Path to a statically-linked RISC-V ELF binary
   --resource NAME     gem5-resources identifier (e.g. riscv-hello)
+  --asm NAME          Assemble tb/cpu/asm/tests/<NAME>.s and use the ELF
   -o, --outdir DIR    gem5 output directory (default: rundir/gem5/<config_name>)
   -h, --help          Show this help
 
 Examples:
-  rung uriscv_baseline --resource riscv-hello
-  rung uriscv_baseline --binary path/to/hello.elf
+  rung uriscv_basic5stage --resource riscv-hello
+  rung uriscv_basic5stage --binary path/to/hello.elf
+  rung uriscv_ooo --asm test_asm_arithmetic
 EOF
     exit 0
 }
@@ -63,11 +67,14 @@ fi
 
 # Parse our options, pass the rest through to the gem5 config script
 outdir=""
+asm_name=""
 passthrough=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o|--outdir)
             outdir="$2"; shift 2 ;;
+        --asm)
+            asm_name="$2"; shift 2 ;;
         *)
             passthrough+=("$1"); shift ;;
     esac
@@ -78,6 +85,28 @@ if [[ -z "$outdir" ]]; then
     outdir="$REPO_ROOT/rundir/gem5/$config_name"
 fi
 mkdir -p "$outdir"
+
+# --asm: assemble the .s file and inject --binary
+if [[ -n "$asm_name" ]]; then
+    asm_file="$ASM_DIR/${asm_name}.s"
+    if [[ ! -f "$asm_file" ]]; then
+        echo "Error: assembly test not found: $asm_file" >&2
+        echo "Available tests:" >&2
+        find "$ASM_DIR" -name '*.s' -printf "  %f\n" 2>/dev/null | sed 's/\.s$//' >&2
+        exit 1
+    fi
+
+    elf_out="$outdir/${asm_name}.elf"
+    echo "=== assembling $asm_name ==="
+    "$SCRIPT_DIR/assemble" "$asm_file" --out "$outdir/${asm_name}.hex" --elf
+    # assemble writes the .elf next to the .hex
+    if [[ ! -f "$elf_out" ]]; then
+        echo "Error: assemble did not produce $elf_out" >&2
+        exit 1
+    fi
+    echo ""
+    passthrough+=("--binary" "$elf_out")
+fi
 
 echo "=== gem5 simulation ==="
 echo "  Config: $config_path"

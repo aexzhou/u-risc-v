@@ -8,11 +8,15 @@ Toolchain required:
 Usage:
     scripts/assemble <input.s>
     scripts/assemble <input.s> --out <output.hex>
+    scripts/assemble <input.s> --elf            # also keep the ELF file
 
 The .text section is extracted and written to the output .hex file in
 Verilog $readmemh format. If .data or .bss sections are non-empty a
 warning is printed; those sections must be loaded into dmem separately
 by the testbench (e.g. by overriding set_dmem() in the test class).
+
+When --elf is given, the linked ELF is also saved alongside the .hex
+file. This is useful for feeding the binary to gem5 or other simulators.
 """
 
 import argparse
@@ -91,6 +95,10 @@ parser.add_argument(
     '--out', metavar='FILE',
     help='Output .hex file (default: same directory and stem as input)'
 )
+parser.add_argument(
+    '--elf', action='store_true',
+    help='Also save the linked ELF binary (for gem5 / external simulators)'
+)
 args = parser.parse_args()
 
 input_asm = os.path.abspath(args.input)
@@ -100,6 +108,7 @@ if not os.path.isfile(input_asm):
 stem    = os.path.splitext(input_asm)[0]
 out_hex = os.path.abspath(args.out) if args.out else stem + '.hex'
 out_dis = os.path.splitext(out_hex)[0] + '.dis'
+out_elf = os.path.splitext(out_hex)[0] + '.elf'
 
 check_toolchain()
 
@@ -201,6 +210,14 @@ with tempfile.TemporaryDirectory(prefix='uriscv_asm_') as tmpdir:
             insn = addr_to_insn.get(addr, '???')
             f.write(f'0x{addr:08x}:  {word:08x}  // {insn}\n')
 
+    # 6. Optionally save the ELF binary
+    if args.elf:
+        import shutil
+        print(f"[elf]     prog.elf -> {os.path.relpath(out_elf)}")
+        shutil.copy2(elf_file, out_elf)
+
 print(f"\nDone: {out_hex}")
 print(f"      {out_dis}")
+if args.elf:
+    print(f"      {out_elf}")
 print(f"Load in testbench with:  $readmemh(\"{os.path.relpath(out_hex)}\", imem);")
