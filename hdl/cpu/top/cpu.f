@@ -8,6 +8,8 @@ ${COMMON_DIR}/dffre.sv
 ${COMMON_DIR}/dffre_sync_flush.sv
 ${COMMON_DIR}/mem.sv
 ${COMMON_DIR}/sram.sv
+${COMMON_DIR}/onehot2bin.sv
+${COMMON_DIR}/l1_cache.sv
 
 // Types package
 ${CHIPLEVEL_DIR}/rv_alu_types.sv
