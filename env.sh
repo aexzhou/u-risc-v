@@ -3,6 +3,9 @@
 # Usage: source env.sh
 
 _URISCV_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_URISCV_LIB="$_URISCV_ROOT/lib"
+
+UVM_HOME="$_URISCV_LIB/uvm/1800.2-2017-1.0/src"
 
 # Add scripts/ to PATH (idempotent)
 case ":$PATH:" in
