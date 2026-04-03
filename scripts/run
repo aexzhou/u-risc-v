@@ -8,6 +8,10 @@
 #   scripts/run --trace test_cpu_bringup_basic
 #   scripts/run -j 4 test_cpu_bringup_basic      # Verilator multithreaded
 #
+# UVM test (auto-detected):
+#   scripts/run rv_l1_uvc +UVM_TESTNAME=rv_l1_full_test
+#   scripts/run --trace rv_l1_uvc +UVM_TESTNAME=rv_l1_smoke_test
+#
 # Regression (name must start with regress_):
 #   scripts/run regress_cpu_bringup
 #   scripts/run regress_cpu_bringup -j 4         # run 4 tests in parallel
@@ -19,8 +23,9 @@
 #      substitute %%TESTNAME%%, and write a generated top module to rundir/
 #   3. Resolve the source filelist (.f): per-test if present, else hdl/cpu/top/cpu.f
 #   4. Expand path variables in the filelist
-#   5. Compile with Verilator into rundir/<testname>/work/
-#   6. Run the simulation (outputs, waveform.vcd land in rundir/<testname>/)
+#   5. Auto-detect UVM tests and add UVM compile flags
+#   6. Compile with Verilator into rundir/<testname>/work/
+#   7. Run the simulation (outputs, waveform.vcd land in rundir/<testname>/)
 #
 # Regression mode reads a <regressname>.list file from tb/, runs each listed
 # test, and places outputs under rundir/<regressname>/<testname>/.
@@ -57,7 +62,11 @@ parser.add_argument('-j', type=int, metavar='N', default=None,
                     help='Single-test: Verilator thread count (default 1). '
                          f'Regression: parallel test count (default {DEFAULT_REGRESS_JOBS}).')
 parser.add_argument('name', help='Test name or regression list name (regress_* prefix triggers regression mode)')
-args, extra_verilator_args = parser.parse_known_args()
+args, extra_args = parser.parse_known_args()
+
+# Separate plusargs (+UVM_TESTNAME etc.) from verilator compile flags
+extra_verilator_args = [a for a in extra_args if not a.startswith('+')]
+extra_plusargs        = [a for a in extra_args if a.startswith('+')]
 
 is_regress = args.name.startswith('regress_')
 jobs = args.j if args.j is not None else (DEFAULT_REGRESS_JOBS if is_regress else 1)
@@ -102,12 +111,35 @@ def expand_vars(line):
     return re.sub(r'\$\{(\w+)\}', replace, line)
 
 
-def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args=None):
+def is_uvm_test(tb_file):
+    """Check whether a testbench file imports uvm_pkg (requires UVM flags)."""
+    try:
+        with open(tb_file, 'r') as f:
+            content = f.read()
+        return bool(re.search(r'\bimport\s+uvm_pkg\b', content))
+    except OSError:
+        return False
+
+
+def resolve_uvm_home():
+    """Return $UVM_HOME, falling back to lib/uvm under repo root."""
+    uvm_home = os.environ.get('UVM_HOME')
+    if uvm_home and os.path.isdir(uvm_home):
+        return uvm_home
+    fallback = os.path.join(repo_root, 'lib', 'uvm', '1800.2-2017-1.0', 'src')
+    if os.path.isdir(fallback):
+        return fallback
+    return None
+
+
+def run_test(testname, run_dir, trace, threads=1, log=None,
+             extra_verilator_args=None, extra_plusargs=None):
     """Build and simulate a single test, placing outputs in run_dir.
 
-    threads: passed as --threads to Verilator (single-test mode).
-    log:     open file object; when set, all output (prints + subprocess)
-             goes there instead of stdout. Used in parallel regression.
+    threads:              passed as --threads to Verilator (single-test mode).
+    log:                  open file object; when set, all output goes there.
+    extra_verilator_args: extra flags for the Verilator compile command.
+    extra_plusargs:        +plusargs passed to the simulation binary at runtime.
     """
     def emit(msg=''):
         print(msg, file=log) if log else print(msg)
@@ -192,6 +224,46 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
             fout.write(expand_vars(line))
     emit(f"expanded  : {expanded_f}")
 
+    # Detect UVM test and resolve UVM_HOME if needed
+    uvm = test_style == 'sv' and is_uvm_test(verilator_top)
+    uvm_flags = []
+
+    if uvm:
+        uvm_home = resolve_uvm_home()
+        if uvm_home is None:
+            raise RuntimeError(
+                "UVM_HOME not set and lib/uvm not found.  "
+                "Source env.sh or set UVM_HOME before running UVM tests.")
+        emit(f"UVM_HOME  : {uvm_home}")
+
+        # Discover _pkg.sv and _if.sv files next to the testbench
+        tb_dir_pkg = os.path.dirname(verilator_top)
+        pkg_files = sorted(
+            os.path.join(tb_dir_pkg, f)
+            for f in os.listdir(tb_dir_pkg)
+            if f.endswith('_pkg.sv') and os.path.join(tb_dir_pkg, f) != verilator_top
+        )
+        if_files = sorted(
+            os.path.join(tb_dir_pkg, f)
+            for f in os.listdir(tb_dir_pkg)
+            if f.endswith('_if.sv')
+        )
+
+        # DPI C/C++ sources needed for linking UVM with Verilator
+        uvm_dpi_dir = os.path.join(uvm_home, 'dpi')
+        uvm_dpi_wrapper = os.path.join(uvm_dpi_dir, 'uvm_dpi_verilator.cpp')
+
+        uvm_flags = [
+            f'-I{uvm_home}', uvm_home + '/uvm_pkg.sv',
+            '-Wno-PKGNODECL', '-Wno-MISINDENT',
+            '-Wno-ENUMVALUE', '-Wno-WIDTHEXPAND', '-Wno-WIDTHTRUNC',
+            '-Wno-CASTCONST', '-Wno-UNUSEDSIGNAL', '-Wno-UNUSEDPARAM',
+            '-Wno-CONSTRAINTIGN', '-Wno-DECLFILENAME',
+            '-CFLAGS', f'-I{uvm_dpi_dir}',
+            '--vpi',
+            uvm_dpi_wrapper,
+        ] + if_files + pkg_files
+
     # Compile with Verilator
     compile_cmd = [
         'verilator',
@@ -199,7 +271,9 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
         '-Wno-TIMESCALEMOD', '-Wno-fatal',
     ] + (['--trace'] if trace else []) + (
         ['--threads', str(threads)] if threads > 1 else []
-    ) + (extra_verilator_args or []) + [
+    ) + (
+        ['--build-jobs', str(threads)] if threads > 1 else []
+    ) + uvm_flags + (extra_verilator_args or []) + [
         '--top-module', testname,
         '--Mdir',       work_dir,
     ] + [f'-I{d}' for d in include_dirs] + [
@@ -222,7 +296,8 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
     emit(f"cwd: {run_dir}")
     emit(f"{sim_bin}\n")
 
-    result = subprocess.run([sim_bin], cwd=run_dir, capture_output=True, text=True)
+    sim_cmd = [sim_bin] + (extra_plusargs or [])
+    result = subprocess.run(sim_cmd, cwd=run_dir, capture_output=True, text=True)
     emit(result.stdout)
     if result.stderr:
         emit(result.stderr)
@@ -239,7 +314,7 @@ def run_test(testname, run_dir, trace, threads=1, log=None, extra_verilator_args
 if not is_regress:
     run_dir = os.path.join(repo_root, 'rundir', args.name)
     try:
-        run_test(args.name, run_dir, args.trace, threads=jobs, extra_verilator_args=extra_verilator_args)
+        run_test(args.name, run_dir, args.trace, threads=jobs, extra_verilator_args=extra_verilator_args, extra_plusargs=extra_plusargs)
     except RuntimeError as e:
         sys.exit(f"ERROR: {e}")
 
@@ -287,7 +362,7 @@ else:
                 print(f"  START  {testname}")
             try:
                 with open(log_path, 'w') as log:
-                    run_test(testname, run_dir, args.trace, log=log, extra_verilator_args=extra_verilator_args)
+                    run_test(testname, run_dir, args.trace, log=log, extra_verilator_args=extra_verilator_args, extra_plusargs=extra_plusargs)
                 with print_lock:
                     print(f"  PASS   {testname}")
                 return (testname, 'PASS')
@@ -300,7 +375,7 @@ else:
             print(f"Running: {testname}")
             print('='*60)
             try:
-                run_test(testname, run_dir, args.trace, extra_verilator_args=extra_verilator_args)
+                run_test(testname, run_dir, args.trace, extra_verilator_args=extra_verilator_args, extra_plusargs=extra_plusargs)
                 return (testname, 'PASS')
             except RuntimeError as e:
                 print(f"\nERROR: {e}")
