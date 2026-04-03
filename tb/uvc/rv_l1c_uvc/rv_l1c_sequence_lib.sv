@@ -1,10 +1,10 @@
 // ================================================================
 //  Base sequence
 // ================================================================
-class rv_l1_base_sequence extends uvm_sequence #(rv_l1_transaction);
-    `uvm_object_utils(rv_l1_base_sequence)
+class rv_l1c_base_sequence extends uvm_sequence #(rv_l1c_transaction);
+    `uvm_object_utils(rv_l1c_base_sequence)
 
-    function new(string name = "rv_l1_base_sequence");
+    function new(string name = "rv_l1c_base_sequence");
         super.new(name);
     endfunction
 
@@ -19,7 +19,7 @@ class rv_l1_base_sequence extends uvm_sequence #(rv_l1_transaction);
 
     // Helper: send a read
     task do_read(bit [31:0] addr);
-        rv_l1_transaction txn = rv_l1_transaction::type_id::create("txn");
+        rv_l1c_transaction txn = rv_l1c_transaction::type_id::create("txn");
         start_item(txn);
         txn.wr    = 0;
         txn.addr  = addr;
@@ -30,7 +30,7 @@ class rv_l1_base_sequence extends uvm_sequence #(rv_l1_transaction);
 
     // Helper: send a write
     task do_write(bit [31:0] addr, bit [31:0] data, bit [3:0] mask = 4'hF);
-        rv_l1_transaction txn = rv_l1_transaction::type_id::create("txn");
+        rv_l1c_transaction txn = rv_l1c_transaction::type_id::create("txn");
         start_item(txn);
         txn.wr    = 1;
         txn.addr  = addr;
@@ -39,17 +39,17 @@ class rv_l1_base_sequence extends uvm_sequence #(rv_l1_transaction);
         finish_item(txn);
     endtask
 
-endclass : rv_l1_base_sequence
+endclass : rv_l1c_base_sequence
 
 
 // ================================================================
 //  Smoke test: cold read miss -> read hit -> write hit -> read-back
 //  (Tests 1-4 from standalone)
 // ================================================================
-class rv_l1_smoke_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_smoke_sequence)
+class rv_l1c_smoke_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_smoke_sequence)
 
-    function new(string name = "rv_l1_smoke_sequence");
+    function new(string name = "rv_l1c_smoke_sequence");
         super.new(name);
     endfunction
 
@@ -73,16 +73,16 @@ class rv_l1_smoke_sequence extends rv_l1_base_sequence;
         do_read(addr);
     endtask
 
-endclass : rv_l1_smoke_sequence
+endclass : rv_l1c_smoke_sequence
 
 
 // ================================================================
 //  Byte-masked write test (Test 5 from standalone)
 // ================================================================
-class rv_l1_byte_mask_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_byte_mask_sequence)
+class rv_l1c_byte_mask_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_byte_mask_sequence)
 
-    function new(string name = "rv_l1_byte_mask_sequence");
+    function new(string name = "rv_l1c_byte_mask_sequence");
         super.new(name);
     endfunction
 
@@ -95,16 +95,16 @@ class rv_l1_byte_mask_sequence extends rv_l1_base_sequence;
         do_read(addr);
     endtask
 
-endclass : rv_l1_byte_mask_sequence
+endclass : rv_l1c_byte_mask_sequence
 
 
 // ================================================================
 //  Multi-set and multi-way test (Tests 6-8 from standalone)
 // ================================================================
-class rv_l1_multi_way_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_multi_way_sequence)
+class rv_l1c_multi_way_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_multi_way_sequence)
 
-    function new(string name = "rv_l1_multi_way_sequence");
+    function new(string name = "rv_l1c_multi_way_sequence");
         super.new(name);
     endfunction
 
@@ -124,16 +124,16 @@ class rv_l1_multi_way_sequence extends rv_l1_base_sequence;
         do_read(addr_b);
     endtask
 
-endclass : rv_l1_multi_way_sequence
+endclass : rv_l1c_multi_way_sequence
 
 
 // ================================================================
 //  Dirty eviction test (Test 9 from standalone)
 // ================================================================
-class rv_l1_eviction_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_eviction_sequence)
+class rv_l1c_eviction_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_eviction_sequence)
 
-    function new(string name = "rv_l1_eviction_sequence");
+    function new(string name = "rv_l1c_eviction_sequence");
         super.new(name);
     endfunction
 
@@ -160,16 +160,16 @@ class rv_l1_eviction_sequence extends rv_l1_base_sequence;
         do_read(a2);
     endtask
 
-endclass : rv_l1_eviction_sequence
+endclass : rv_l1c_eviction_sequence
 
 
 // ================================================================
 //  Sequential reads across sets (Test 10 from standalone)
 // ================================================================
-class rv_l1_sequential_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_sequential_sequence)
+class rv_l1c_sequential_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_sequential_sequence)
 
-    function new(string name = "rv_l1_sequential_sequence");
+    function new(string name = "rv_l1c_sequential_sequence");
         super.new(name);
     endfunction
 
@@ -180,16 +180,16 @@ class rv_l1_sequential_sequence extends rv_l1_base_sequence;
         end
     endtask
 
-endclass : rv_l1_sequential_sequence
+endclass : rv_l1c_sequential_sequence
 
 
 // ================================================================
 //  Write miss / write-allocate test (Test 11 from standalone)
 // ================================================================
-class rv_l1_write_allocate_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_write_allocate_sequence)
+class rv_l1c_write_allocate_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_write_allocate_sequence)
 
-    function new(string name = "rv_l1_write_allocate_sequence");
+    function new(string name = "rv_l1c_write_allocate_sequence");
         super.new(name);
     endfunction
 
@@ -201,33 +201,33 @@ class rv_l1_write_allocate_sequence extends rv_l1_base_sequence;
         do_read(addr);
     endtask
 
-endclass : rv_l1_write_allocate_sequence
+endclass : rv_l1c_write_allocate_sequence
 
 
 // ================================================================
 //  Full regression: runs all directed sequences back-to-back
 // ================================================================
-class rv_l1_full_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_full_sequence)
+class rv_l1c_full_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_full_sequence)
 
-    function new(string name = "rv_l1_full_sequence");
+    function new(string name = "rv_l1c_full_sequence");
         super.new(name);
     endfunction
 
     virtual task body();
-        rv_l1_smoke_sequence          smoke_seq;
-        rv_l1_byte_mask_sequence      bmask_seq;
-        rv_l1_multi_way_sequence      mway_seq;
-        rv_l1_eviction_sequence       evict_seq;
-        rv_l1_sequential_sequence     seq_seq;
-        rv_l1_write_allocate_sequence walloc_seq;
+        rv_l1c_smoke_sequence          smoke_seq;
+        rv_l1c_byte_mask_sequence      bmask_seq;
+        rv_l1c_multi_way_sequence      mway_seq;
+        rv_l1c_eviction_sequence       evict_seq;
+        rv_l1c_sequential_sequence     seq_seq;
+        rv_l1c_write_allocate_sequence walloc_seq;
 
-        smoke_seq  = rv_l1_smoke_sequence::type_id::create("smoke_seq");
-        bmask_seq  = rv_l1_byte_mask_sequence::type_id::create("bmask_seq");
-        mway_seq   = rv_l1_multi_way_sequence::type_id::create("mway_seq");
-        evict_seq  = rv_l1_eviction_sequence::type_id::create("evict_seq");
-        seq_seq    = rv_l1_sequential_sequence::type_id::create("seq_seq");
-        walloc_seq = rv_l1_write_allocate_sequence::type_id::create("walloc_seq");
+        smoke_seq  = rv_l1c_smoke_sequence::type_id::create("smoke_seq");
+        bmask_seq  = rv_l1c_byte_mask_sequence::type_id::create("bmask_seq");
+        mway_seq   = rv_l1c_multi_way_sequence::type_id::create("mway_seq");
+        evict_seq  = rv_l1c_eviction_sequence::type_id::create("evict_seq");
+        seq_seq    = rv_l1c_sequential_sequence::type_id::create("seq_seq");
+        walloc_seq = rv_l1c_write_allocate_sequence::type_id::create("walloc_seq");
 
         smoke_seq.start(m_sequencer);
         bmask_seq.start(m_sequencer);
@@ -237,14 +237,14 @@ class rv_l1_full_sequence extends rv_l1_base_sequence;
         walloc_seq.start(m_sequencer);
     endtask
 
-endclass : rv_l1_full_sequence
+endclass : rv_l1c_full_sequence
 
 
 // ================================================================
 //  Random test sequence
 // ================================================================
-class rv_l1_random_sequence extends rv_l1_base_sequence;
-    `uvm_object_utils(rv_l1_random_sequence)
+class rv_l1c_random_sequence extends rv_l1c_base_sequence;
+    `uvm_object_utils(rv_l1c_random_sequence)
 
     rand int unsigned num_transactions;
 
@@ -252,18 +252,18 @@ class rv_l1_random_sequence extends rv_l1_base_sequence;
         num_transactions inside {[20:100]};
     }
 
-    function new(string name = "rv_l1_random_sequence");
+    function new(string name = "rv_l1c_random_sequence");
         super.new(name);
     endfunction
 
     virtual task body();
-        rv_l1_transaction txn;
+        rv_l1c_transaction txn;
 
         `uvm_info(get_type_name(),
             $sformatf("Running %0d random transactions", num_transactions), UVM_LOW)
 
         for (int i = 0; i < num_transactions; i++) begin
-            txn = rv_l1_transaction::type_id::create($sformatf("txn_%0d", i));
+            txn = rv_l1c_transaction::type_id::create($sformatf("txn_%0d", i));
             start_item(txn);
             if (!txn.randomize()) begin
                 `uvm_error(get_type_name(), "Randomization failed")
@@ -272,4 +272,4 @@ class rv_l1_random_sequence extends rv_l1_base_sequence;
         end
     endtask
 
-endclass : rv_l1_random_sequence
+endclass : rv_l1c_random_sequence

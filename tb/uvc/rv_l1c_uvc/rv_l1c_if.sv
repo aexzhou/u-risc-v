@@ -1,4 +1,4 @@
-interface rv_l1_if #(
+interface rv_l1c_if #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
     parameter LINE_WIDTH = 128
@@ -44,4 +44,4 @@ interface rv_l1_if #(
     modport driver  (clocking drv_cb, input clk, input rst_n);
     modport monitor (clocking mon_cb, input clk, input rst_n);
 
-endinterface : rv_l1_if
+endinterface : rv_l1c_if

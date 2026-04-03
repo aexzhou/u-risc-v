@@ -1,7 +1,7 @@
-class rv_l1_coverage extends uvm_subscriber #(rv_l1_transaction);
-    `uvm_component_utils(rv_l1_coverage)
+class rv_l1c_coverage extends uvm_subscriber #(rv_l1c_transaction);
+    `uvm_component_utils(rv_l1c_coverage)
 
-    rv_l1_transaction txn;
+    rv_l1c_transaction txn;
 
     covergroup cg_l1_ops;
         option.per_instance = 1;
@@ -39,12 +39,12 @@ class rv_l1_coverage extends uvm_subscriber #(rv_l1_transaction);
         cx_op_set : cross cp_op, cp_set_index;
     endgroup
 
-    function new(string name = "rv_l1_coverage", uvm_component parent = null);
+    function new(string name = "rv_l1c_coverage", uvm_component parent = null);
         super.new(name, parent);
         cg_l1_ops = new();
     endfunction
 
-    virtual function void write(rv_l1_transaction t);
+    virtual function void write(rv_l1c_transaction t);
         txn = t;
         cg_l1_ops.sample();
     endfunction
@@ -54,4 +54,4 @@ class rv_l1_coverage extends uvm_subscriber #(rv_l1_transaction);
             $sformatf("Coverage: %.1f%%", cg_l1_ops.get_coverage()), UVM_LOW)
     endfunction
 
-endclass : rv_l1_coverage
+endclass : rv_l1c_coverage

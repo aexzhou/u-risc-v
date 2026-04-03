@@ -9,8 +9,8 @@
 #   scripts/run -j 4 test_cpu_bringup_basic      # Verilator multithreaded
 #
 # UVM test (auto-detected):
-#   scripts/run rv_l1_uvc +UVM_TESTNAME=rv_l1_full_test
-#   scripts/run --trace rv_l1_uvc +UVM_TESTNAME=rv_l1_smoke_test
+#   scripts/run rv_l1c_uvc +UVM_TESTNAME=rv_l1c_full_test
+#   scripts/run --trace rv_l1c_uvc +UVM_TESTNAME=rv_l1c_smoke_test
 #
 # Regression (name must start with regress_):
 #   scripts/run regress_cpu_bringup

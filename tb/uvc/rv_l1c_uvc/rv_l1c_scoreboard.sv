@@ -1,7 +1,7 @@
-class rv_l1_scoreboard extends uvm_scoreboard;
-    `uvm_component_utils(rv_l1_scoreboard)
+class rv_l1c_scoreboard extends uvm_scoreboard;
+    `uvm_component_utils(rv_l1c_scoreboard)
 
-    uvm_analysis_imp #(rv_l1_transaction, rv_l1_scoreboard) ap_imp;
+    uvm_analysis_imp #(rv_l1c_transaction, rv_l1c_scoreboard) ap_imp;
 
     // Reference model parameters (must match DUT)
     localparam ADDR_WIDTH     = 32;
@@ -34,7 +34,7 @@ class rv_l1_scoreboard extends uvm_scoreboard;
     int transactions_passed;
     int transactions_failed;
 
-    function new(string name = "rv_l1_scoreboard", uvm_component parent = null);
+    function new(string name = "rv_l1c_scoreboard", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
@@ -113,7 +113,7 @@ class rv_l1_scoreboard extends uvm_scoreboard;
     endfunction
 
     // Main check function called by analysis port
-    virtual function void write(rv_l1_transaction txn);
+    virtual function void write(rv_l1c_transaction txn);
         bit [TAG_BITS-1:0]      tag;
         bit [INDEX_BITS-1:0]    idx;
         bit [WORD_SEL_BITS-1:0] word;
@@ -217,4 +217,4 @@ class rv_l1_scoreboard extends uvm_scoreboard;
                 $sformatf("%0d transaction(s) FAILED", transactions_failed))
     endfunction
 
-endclass : rv_l1_scoreboard
+endclass : rv_l1c_scoreboard

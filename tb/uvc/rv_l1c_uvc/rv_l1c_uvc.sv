@@ -1,7 +1,7 @@
-module rv_l1_uvc;
+module rv_l1c_uvc;
 
     import uvm_pkg::*;
-    import rv_l1_pkg::*;
+    import rv_l1c_pkg::*;
 
     // ============================================================
     //  Parameters
@@ -26,7 +26,7 @@ module rv_l1_uvc;
     // ============================================================
     //  Interface
     // ============================================================
-    rv_l1_if #(
+    rv_l1c_if #(
         .ADDR_WIDTH (ADDR_WIDTH),
         .DATA_WIDTH (DATA_WIDTH),
         .LINE_WIDTH (LINE_WIDTH)
@@ -157,7 +157,7 @@ module rv_l1_uvc;
     //  UVM entry point
     // ============================================================
     initial begin
-        uvm_config_db #(virtual rv_l1_if)::set(null, "*.env.agent.*", "vif", vif);
+        uvm_config_db #(virtual rv_l1c_if)::set(null, "*.env.agent.*", "vif", vif);
         run_test();
     end
 
@@ -165,8 +165,8 @@ module rv_l1_uvc;
     //  Waveform dump
     // ============================================================
     initial begin
-        $dumpfile("rv_l1_uvc.vcd");
-        $dumpvars(0, rv_l1_uvc);
+        $dumpfile("rv_l1c_uvc.vcd");
+        $dumpvars(0, rv_l1c_uvc);
     end
 
     // ============================================================
@@ -177,4 +177,4 @@ module rv_l1_uvc;
         `uvm_fatal("WATCHDOG", "Global timeout reached")
     end
 
-endmodule : rv_l1_uvc
+endmodule : rv_l1c_uvc

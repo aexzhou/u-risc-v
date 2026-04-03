@@ -1,22 +1,22 @@
-class rv_l1_driver extends uvm_driver #(rv_l1_transaction);
-    `uvm_component_utils(rv_l1_driver)
+class rv_l1c_driver extends uvm_driver #(rv_l1c_transaction);
+    `uvm_component_utils(rv_l1c_driver)
 
-    virtual rv_l1_if vif;
+    virtual rv_l1c_if vif;
 
     int unsigned timeout_cycles = 200;
 
-    function new(string name = "rv_l1_driver", uvm_component parent = null);
+    function new(string name = "rv_l1c_driver", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
     virtual function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db #(virtual rv_l1_if)::get(this, "", "vif", vif))
+        if (!uvm_config_db #(virtual rv_l1c_if)::get(this, "", "vif", vif))
             `uvm_fatal(get_type_name(), "Virtual interface not found in config DB")
     endfunction
 
     virtual task run_phase(uvm_phase phase);
-        rv_l1_transaction txn;
+        rv_l1c_transaction txn;
 
         // Wait for reset de-assertion
         @(posedge vif.rst_n);
@@ -29,7 +29,7 @@ class rv_l1_driver extends uvm_driver #(rv_l1_transaction);
         end
     endtask
 
-    virtual task drive_transaction(rv_l1_transaction txn);
+    virtual task drive_transaction(rv_l1c_transaction txn);
         // Drive request
         @(negedge vif.clk);
         vif.req_valid <= 1'b1;
@@ -66,4 +66,4 @@ class rv_l1_driver extends uvm_driver #(rv_l1_transaction);
         vif.req_valid <= 1'b0;
     endtask
 
-endclass : rv_l1_driver
+endclass : rv_l1c_driver

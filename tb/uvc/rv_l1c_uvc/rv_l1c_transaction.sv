@@ -1,4 +1,4 @@
-class rv_l1_transaction extends uvm_sequence_item;
+class rv_l1c_transaction extends uvm_sequence_item;
 
     // Stimulus fields
     rand bit [31:0] addr;
@@ -10,7 +10,7 @@ class rv_l1_transaction extends uvm_sequence_item;
     bit [31:0] rdata;
     bit        hit;
 
-    `uvm_object_utils_begin(rv_l1_transaction)
+    `uvm_object_utils_begin(rv_l1c_transaction)
         `uvm_field_int(addr,   UVM_ALL_ON)
         `uvm_field_int(wr,     UVM_ALL_ON)
         `uvm_field_int(wdata,  UVM_ALL_ON)
@@ -19,7 +19,7 @@ class rv_l1_transaction extends uvm_sequence_item;
         `uvm_field_int(hit,    UVM_ALL_ON)
     `uvm_object_utils_end
 
-    function new(string name = "rv_l1_transaction");
+    function new(string name = "rv_l1c_transaction");
         super.new(name);
     endfunction
 
@@ -41,4 +41,4 @@ class rv_l1_transaction extends uvm_sequence_item;
                          wr ? "WR" : "RD", addr, wdata, wmask, rdata, hit);
     endfunction
 
-endclass : rv_l1_transaction
+endclass : rv_l1c_transaction
