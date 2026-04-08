@@ -249,6 +249,34 @@ def run_test(testname, run_dir, trace, threads=1, log=None,
             if f.endswith('_if.sv')
         )
 
+        # Auto-discover dependent UVCs in tb/common/uvc/.  Each subdir there
+        # is treated as a UVC: its _pkg.sv / _if.sv files are added to the
+        # compile, and the dir itself is added to the include search path so
+        # `include directives inside the package can resolve.
+        common_uvc_dir   = os.path.join(repo_root, 'tb', 'common', 'uvc')
+        common_pkg_files = []
+        common_if_files  = []
+        common_inc_dirs  = []
+        if os.path.isdir(common_uvc_dir):
+            for entry in sorted(os.listdir(common_uvc_dir)):
+                full_uvc_dir = os.path.join(common_uvc_dir, entry)
+                if not os.path.isdir(full_uvc_dir):
+                    continue
+                # Skip the testbench's own UVC dir to avoid double-includes
+                if os.path.realpath(full_uvc_dir) == os.path.realpath(tb_dir_pkg):
+                    continue
+                common_inc_dirs.append(full_uvc_dir)
+                for f in sorted(os.listdir(full_uvc_dir)):
+                    full_path = os.path.join(full_uvc_dir, f)
+                    if not os.path.isfile(full_path):
+                        continue
+                    if f.endswith('_pkg.sv'):
+                        common_pkg_files.append(full_path)
+                    elif f.endswith('_if.sv'):
+                        common_if_files.append(full_path)
+        if common_pkg_files:
+            emit(f"common UVCs : {', '.join(os.path.relpath(p) for p in common_pkg_files)}")
+
         # DPI C/C++ sources needed for linking UVM with Verilator
         uvm_dpi_dir = os.path.join(uvm_home, 'dpi')
         uvm_dpi_wrapper = os.path.join(uvm_dpi_dir, 'uvm_dpi_verilator.cpp')
@@ -262,7 +290,9 @@ def run_test(testname, run_dir, trace, threads=1, log=None,
             '-CFLAGS', f'-I{uvm_dpi_dir}',
             '--vpi',
             uvm_dpi_wrapper,
-        ] + if_files + pkg_files
+        ] + [f'-I{d}' for d in common_inc_dirs] \
+          + common_if_files + common_pkg_files \
+          + if_files + pkg_files
 
     # Compile with Verilator
     compile_cmd = [
