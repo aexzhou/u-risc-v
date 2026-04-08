@@ -39,11 +39,15 @@ class rv_l1c_smoke_test extends rv_l1c_base_test;
     endfunction
 
     virtual task run_phase(uvm_phase phase);
-        rv_l1c_smoke_sequence seq;
+        rv_l1c_base_vseq      vseq;
+        rv_l1c_smoke_sequence cpu_seq;
+
         phase.raise_objection(this);
 
-        seq = rv_l1c_smoke_sequence::type_id::create("seq");
-        seq.start(env.agent.sequencer);
+        cpu_seq      = rv_l1c_smoke_sequence::type_id::create("cpu_seq");
+        vseq         = rv_l1c_base_vseq::type_id::create("vseq");
+        vseq.cpu_seq = cpu_seq;
+        vseq.start(env.vseqr);
 
         phase.drop_objection(this);
     endtask
@@ -62,11 +66,15 @@ class rv_l1c_full_test extends rv_l1c_base_test;
     endfunction
 
     virtual task run_phase(uvm_phase phase);
-        rv_l1c_full_sequence seq;
+        rv_l1c_base_vseq     vseq;
+        rv_l1c_full_sequence cpu_seq;
+
         phase.raise_objection(this);
 
-        seq = rv_l1c_full_sequence::type_id::create("seq");
-        seq.start(env.agent.sequencer);
+        cpu_seq      = rv_l1c_full_sequence::type_id::create("cpu_seq");
+        vseq         = rv_l1c_base_vseq::type_id::create("vseq");
+        vseq.cpu_seq = cpu_seq;
+        vseq.start(env.vseqr);
 
         phase.drop_objection(this);
     endtask
@@ -85,11 +93,15 @@ class rv_l1c_random_test extends rv_l1c_base_test;
     endfunction
 
     virtual task run_phase(uvm_phase phase);
-        rv_l1c_random_sequence seq;
+        rv_l1c_base_vseq       vseq;
+        rv_l1c_random_sequence cpu_seq;
+
         phase.raise_objection(this);
 
-        seq = rv_l1c_random_sequence::type_id::create("seq");
-        seq.start(env.agent.sequencer);
+        cpu_seq      = rv_l1c_random_sequence::type_id::create("cpu_seq");
+        vseq         = rv_l1c_base_vseq::type_id::create("vseq");
+        vseq.cpu_seq = cpu_seq;
+        vseq.start(env.vseqr);
 
         phase.drop_objection(this);
     endtask

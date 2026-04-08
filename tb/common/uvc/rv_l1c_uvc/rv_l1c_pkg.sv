@@ -1,5 +1,6 @@
 package rv_l1c_pkg;
     import uvm_pkg::*;
+    import clk_rst_pkg::*;
     `include "uvm_macros.svh"
 
     `include "rv_l1c_transaction.sv"
@@ -11,5 +12,6 @@ package rv_l1c_pkg;
     `include "rv_l1c_agent.sv"
     `include "rv_l1c_vseqr.sv"
     `include "rv_l1c_env.sv"
+    `include "sequences/rv_l1c_vseq.sv"
     `include "rv_l1c_test.sv"
 endpackage : rv_l1c_pkg

@@ -2,6 +2,7 @@ module rv_l1c_uvc;
 
     import uvm_pkg::*;
     import rv_l1c_pkg::*;
+    import clk_rst_pkg::*;
 
     // ============================================================
     //  Parameters
@@ -12,16 +13,14 @@ module rv_l1c_uvc;
     localparam NUM_SETS    = 16;
     localparam NUM_WAYS    = 2;
     localparam OFFSET_BITS = $clog2(LINE_WIDTH / 8);
-    localparam CLK_PERIOD  = 10;
 
     // ============================================================
-    //  Clock & reset
+    //  Clock & reset (driven by the clk_rst UVC)
     // ============================================================
-    logic clk;
-    logic rst_n;
+    clk_rst_if clk_rst_vif();
 
-    initial clk = 0;
-    always #(CLK_PERIOD / 2) clk = ~clk;
+    wire clk   = clk_rst_vif.clk;
+    wire rst_n = clk_rst_vif.rst_n;
 
     // ============================================================
     //  Interface
@@ -140,23 +139,25 @@ module rv_l1c_uvc;
     end
 
     // ============================================================
-    //  Reset sequence
+    //  CPU-side default values
+    //  The clk_rst UVC owns clock generation and rst_n; we still need
+    //  to drive safe defaults on the cpu-side request signals before
+    //  rst_n deasserts so the DUT does not see X's during reset.
+    //  The rv_l1c driver takes over once rst_n goes high.
     // ============================================================
     initial begin
-        rst_n = 1'b0;
         vif.req_valid = 1'b0;
         vif.req_addr  = '0;
         vif.req_wr    = 1'b0;
         vif.req_wdata = '0;
         vif.req_wmask = '0;
-        repeat (5) @(posedge clk);
-        rst_n = 1'b1;
     end
 
     // ============================================================
     //  UVM entry point
     // ============================================================
     initial begin
+        uvm_config_db #(virtual clk_rst_if)::set(null, "*.env.clk_rst_agt.driver", "vif", clk_rst_vif);
         uvm_config_db #(virtual rv_l1c_if)::set(null, "*.env.agent.*", "vif", vif);
         run_test();
     end
