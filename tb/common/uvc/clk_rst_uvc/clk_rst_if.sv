@@ -22,7 +22,16 @@ interface clk_rst_if;
     event         clock_cycle_count_reached;
 
     // ============================================================
-    //  Initialization
+    //  Initialization + clock oscillator
+    //
+    //  Free-running #(half_period) loop that only flips |clk| while
+    //  |clk_running| is asserted.  Verilator's --timing scheduler
+    //  handles this pattern reliably (the same shape used to work in
+    //  the rest of the project), whereas a wait()/@() guarded loop
+    //  has been observed not to wake up when clk_running flips.
+    //
+    //  Initialization is done in the same initial block to guarantee
+    //  half_period is non-zero before the forever loop begins.
     // ============================================================
     initial begin
         clk             = 1'b0;
@@ -30,16 +39,12 @@ interface clk_rst_if;
         half_period     = 5;
         clk_running     = 1'b0;
         cycle_countdown = 0;
-    end
 
-    // ============================================================
-    //  Clock oscillator
-    //  Blocks while clk_running == 0; resumes when set to 1.
-    // ============================================================
-    always begin
-        wait (clk_running == 1'b1);
-        #(half_period);
-        clk = ~clk;
+        forever begin
+            #(half_period);
+            if (clk_running)
+                clk = ~clk;
+        end
     end
 
     // ============================================================
